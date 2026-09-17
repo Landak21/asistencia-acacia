@@ -77,7 +77,6 @@
             <button class="btn-login" onclick="verificarPIN()">Ingresar</button>
             <p id="pinError" style="color: #ffb8b8; display: none; margin-top: 10px;">PIN Incorrecto</p>
         </div>
-        <!-- FIRMA EN LA PANTALLA DE INGRESO -->
         <div class="login-footer">App elaborada por ELIOT MANRIQUE</div>
     </div>
 
@@ -99,7 +98,6 @@
 
         <!-- VISTA 1: TOMAR ASISTENCIA -->
         <div id="viewAsistencia" class="view-container view-active">
-            <!-- AQUÍ APARECE EL TOTAL DE ESTUDIANTES -->
             <div id="groupTotalBanner">Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
             
             <div id="statsDashboard">
@@ -111,7 +109,6 @@
             
             <div id="listContainer"></div>
             
-            <!-- FIRMA AL FINAL DE LA LISTA -->
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
             
             <div class="fab-container" id="fabSave">
@@ -127,7 +124,6 @@
             
             <div id="statsContainer"></div>
             
-            <!-- FIRMA AL FINAL DE LAS ESTADÍSTICAS -->
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
         </div>
 
@@ -141,10 +137,8 @@
     <script>
         const PIN_ACCESO = "2026"; 
         
-        // ==========================================
-        // ⚠️ PEGA AQUÍ LA NUEVA URL DE APPS SCRIPT 
-        // ==========================================
-        const SCRIPT_URL = 'TU_NUEVA_URL_DE_APPS_SCRIPT_AQUI'; 
+        // URL OFICIAL DE APPS SCRIPT YA INTEGRADA
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzX1LKZdloBfcF4fzH_wAgjPRWDqbjSbYK4dourJGx1kvVMWU5Zkw3b9UUFixdQ4TyHfQ/exec'; 
 
         const estados = ['Presente', 'Falla', 'Retardo', 'Evasion'];
         
@@ -154,7 +148,6 @@
         let estadoActualClase = [];
         let currentTab = 'Asistencia';
 
-        // --- SISTEMA DE LOGIN ---
         function verificarPIN() {
             const pin = document.getElementById('pinInput').value;
             if(pin === PIN_ACCESO) {
@@ -171,7 +164,6 @@
         }
         document.getElementById('pinInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') verificarPIN(); });
 
-        // --- INICIALIZACIÓN Y NAVEGACIÓN ---
         function iniciarApp() {
             document.getElementById('datePicker').valueAsDate = new Date();
             actualizarContadorPendientes();
@@ -217,7 +209,6 @@
             }
         }
 
-        // --- VISTA 1: ASISTENCIA ---
         function renderList() {
             const container = document.getElementById('listContainer');
             const selectedGroup = document.getElementById('groupSelector').value;
@@ -261,11 +252,9 @@
                 return;
             }
             
-            // Mostrar contador total
             document.getElementById('groupTotalBanner').style.display = 'block';
             document.getElementById('lblTotal').innerText = estadoActualClase.length;
             
-            // Mostrar desglose
             document.getElementById('statsDashboard').style.display = 'flex';
             let p = 0, f = 0, r = 0, e = 0;
             estadoActualClase.forEach(s => {
@@ -296,7 +285,6 @@
             renderActiveView();
         }
 
-        // --- VISTA 2: ESTADÍSTICAS HISTÓRICAS ---
         function renderEstadisticas() {
             const container = document.getElementById('statsContainer');
             const selectedGroup = document.getElementById('groupSelector').value;
@@ -348,7 +336,6 @@
             }
         }
 
-        // --- CONEXIÓN A LA NUBE ---
         function actualizarContadorPendientes() {
             const badge = document.getElementById('pendingCount');
             if (outbox.length > 0) { badge.innerText = outbox.length; badge.style.display = 'inline-block'; } 
