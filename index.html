@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v2.2.0 (Fase 2B · Seguridad)        ║
+  ║  ASISTENCIA ACACIA II · Frontend v2.3.0 (Fase 3A · Escalabilidad)    ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V2.2_20260916                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V2.3_20260917                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -25,12 +25,12 @@
             PIN_ACCESO: '2026',
 
             // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
-            VERSION_API_REQUERIDA: '2.2.0',
+            VERSION_API_REQUERIDA: '2.3.0',
 
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '2.2.0'
+            VERSION_APP: '2.3.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -95,11 +95,19 @@
         .status-badge { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.5); padding: 4px 8px; border-radius: 12px; }
         /* Base inferior: ocupa su propio espacio, nunca tapa la lista */
         .bottom-dock { flex-shrink: 0; background: white; border-top: 1px solid #ddd; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; }
-        .fab-container { display: flex; justify-content: center; padding: 10px 20px 0; box-sizing: border-box; }
-        .btn-save { background-color: #28a745; color: white; width: 100%; padding: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; }
+        .fab-container { display: flex; justify-content: center; padding: 8px 16px 0; box-sizing: border-box; }
+        .btn-save { background-color: #28a745; color: white; width: 100%; padding: 11px; border: none; border-radius: 22px; font-size: 15px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; }
 
-        .bottom-nav { display: flex; justify-content: space-around; padding: 10px 0; }
-        .nav-item { text-align: center; color: #666; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; padding: 5px 0; }
+        .bottom-nav { display: flex; justify-content: space-around; padding: 4px 0 6px; }
+        .nav-item { text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; flex: 1; min-width: 0; padding: 6px 4px; line-height: 1.2; overflow-wrap: anywhere; }
+        .banner-apartadas { display: none; background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; }
+        .apartada-card { background: white; border-left: 5px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 14px; }
+        .apartada-motivo { color: #721c24; margin: 6px 0 10px; }
+        .apartada-acciones { display: flex; gap: 8px; }
+        .apartada-acciones button, .btn-panel { flex: 1; padding: 9px; border-radius: 18px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .btn-reintentar { background: #007bff; color: white; border: none; }
+        .btn-descartar { background: white; color: #dc3545; border: 1px solid #dc3545; }
+        .btn-panel { display: block; width: 100%; margin-bottom: 10px; background: white; border: 1px solid #2c3e50; color: #2c3e50; }
         .nav-active { color: var(--acacia-blue); border-bottom: 3px solid var(--acacia-blue); }
 
         .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
@@ -151,6 +159,7 @@
 
         <!-- VISTA 1: TOMAR ASISTENCIA -->
         <div id="viewAsistencia" class="view-container view-active">
+            <div id="bannerApartadas" class="banner-apartadas" onclick="cambiarPestana('Apartadas')"></div>
             <div id="groupTotalBanner">Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
             <div id="statsDashboard">
                 <div style="color: #155724;">🟢 <span id="cPre">0</span></div>
@@ -165,11 +174,20 @@
         <!-- VISTA 2: ESTADÍSTICAS HISTÓRICAS -->
         <div id="viewEstadisticas" class="view-container">
             <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: center;">
-                Historial acumulado del grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.
+                Acumulado del grupo según las clases ya sincronizadas. Pulsa "1. Bajar Listas y Datos" para actualizar.
             </div>
             <div id="statsContainer"></div>
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
             <button class="btn-cambiar-codigo" onclick="cambiarCodigo()">🔑 Cambiar código de docente</button>
+        </div>
+
+        <!-- VISTA 3: CLASES APARTADAS POR EL SERVIDOR -->
+        <div id="viewApartadas" class="view-container">
+            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404;">
+                El servidor no aceptó estas clases. Siguen guardadas en el celular. Si coordinación ya corrigió el problema (por ejemplo, registró su reemplazo), pulse <b>Reintentar</b>.
+            </div>
+            <div id="apartadasContainer"></div>
+            <button class="btn-panel" onclick="cambiarPestana('Asistencia')">⬅️ Volver a Tomar Lista</button>
         </div>
 
         <div class="bottom-dock">
@@ -191,7 +209,8 @@
      * ══════════════════════════════════════════════════════════════════ */
     const CLAVES = Object.freeze({
         ESTUDIANTES: 'acacia_estudiantes',
-        HISTORIAL: 'acacia_historial',
+        RESUMEN: 'acacia_resumen',
+        SESIONES: 'acacia_sesiones_recientes',
         OUTBOX: 'acacia_outbox_v2',
         CUARENTENA: 'acacia_rechazadas',
         CODIGO: 'acacia_codigo',
@@ -253,7 +272,9 @@
      *  3. ESTADO DE LA APP
      * ══════════════════════════════════════════════════════════════════ */
     let db = leerLS(CLAVES.ESTUDIANTES, []);
-    let historial = leerLS(CLAVES.HISTORIAL, []);
+    localStorage.removeItem('acacia_historial');            // v2.2 o anterior: libera espacio
+    let resumen = leerLS(CLAVES.RESUMEN, []);
+    let sesionesRecientes = leerLS(CLAVES.SESIONES, []);
     let outbox = leerLS(CLAVES.OUTBOX, []);
     let codigo = leerLS(CLAVES.CODIGO, '');
     let docente = leerLS(CLAVES.DOCENTE, null);
@@ -398,14 +419,14 @@
 
     function aplicarDatosServidor(data) {
         db = data.estudiantes;
-        historial = Array.isArray(data.historial) ? data.historial : [];
+        resumen = Array.isArray(data.resumen) ? data.resumen : [];
+        sesionesRecientes = Array.isArray(data.sesiones_recientes) ? data.sesiones_recientes : [];
         docente = data.docente;
         guardarLS(CLAVES.DOCENTE, docente);
         if (!guardarLS(CLAVES.ESTUDIANTES, db)) {
             return '\n\n⚠️ Memoria llena: las listas funcionarán solo mientras la app esté abierta.';
         }
-        if (!guardarLS(CLAVES.HISTORIAL, historial)) {
-            localStorage.removeItem(CLAVES.HISTORIAL);
+        if (!guardarLS(CLAVES.RESUMEN, resumen) || !guardarLS(CLAVES.SESIONES, sesionesRecientes)) {
             return '\n\n⚠️ Memoria llena: las estadísticas no quedarán guardadas sin internet.';
         }
         return '';
@@ -420,13 +441,17 @@
         document.getElementById('tabStats').className = 'nav-item' + (tabName === 'Estadisticas' ? ' nav-active' : '');
         document.getElementById('viewAsistencia').classList.toggle('view-active', tabName === 'Asistencia');
         document.getElementById('viewEstadisticas').classList.toggle('view-active', tabName === 'Estadisticas');
+        document.getElementById('viewApartadas').classList.toggle('view-active', tabName === 'Apartadas');
         renderActiveView();
     }
 
     function renderActiveView() {
         const enAsistencia = currentTab === 'Asistencia';
         document.getElementById('fabSave').style.display = enAsistencia ? 'flex' : 'none';
-        enAsistencia ? renderList() : renderEstadisticas();
+        actualizarBannerApartadas();
+        if (currentTab === 'Apartadas') renderApartadas();
+        else if (enAsistencia) renderList();
+        else renderEstadisticas();
     }
 
     function hayMarcasSinGuardar() {
@@ -523,8 +548,8 @@
 
     function existeListaPrevia(fecha, grupo) {
         const enOutbox = outbox.some(s => s.fecha === fecha && s.grupo === grupo);
-        const enHistorial = historial.some(h => aTexto(h.fecha) === fecha && aTexto(h.grupo) === grupo);
-        return enOutbox || enHistorial;
+        const enServidor = sesionesRecientes.some(h => aTexto(h.fecha) === fecha && aTexto(h.grupo) === grupo);
+        return enOutbox || enServidor;
     }
 
     function guardarClaseLocal() {
@@ -580,22 +605,16 @@
         const grupo = grupoActual;
 
         if (!grupo) return mostrarMensaje(container, 'Selecciona un grupo para ver estadísticas.');
-        if (reemplazoDe(grupo)) return mostrarMensaje(container, 'Grupo en reemplazo: el historial solo lo ven el docente titular y coordinación.');
-        if (historial.length === 0) return mostrarMensaje(container, 'No hay historial descargado.');
+        if (reemplazoDe(grupo)) return mostrarMensaje(container, 'Grupo en reemplazo: las estadísticas solo las ven el docente titular y coordinación.');
 
-        const statsMap = {};
-        db.filter(s => aTexto(s.group) === grupo).forEach(s => {
-            statsMap[aTexto(s.id)] = { nombre: aTexto(s.name), fallas: 0, retardos: 0, evasiones: 0 };
-        });
-        historial.forEach(r => {
-            const st = aTexto(r.grupo) === grupo && statsMap[aTexto(r.id)];
-            if (!st) return;
-            if (r.estado === 'Falla') st.fallas++;
-            else if (r.estado === 'Retardo') st.retardos++;
-            else if (r.estado === 'Evasion') st.evasiones++;
-        });
+        const porId = new Map(resumen.filter(r => aTexto(r.grupo) === grupo).map(r => [aTexto(r.id), r]));
+        if (porId.size === 0) return mostrarMensaje(container, 'Aún no hay clases sincronizadas de este grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.');
 
-        const lista = Object.values(statsMap)
+        const lista = db.filter(s => aTexto(s.group) === grupo)
+            .map(s => {
+                const r = porId.get(aTexto(s.id)) || {};
+                return { nombre: aTexto(s.name), clases: r.clases || 0, fallas: r.fallas || 0, retardos: r.retardos || 0, evasiones: r.evasiones || 0 };
+            })
             .filter(st => st.fallas + st.retardos + st.evasiones > 0)
             .sort((a, b) => (b.evasiones - a.evasiones) || (b.fallas - a.fallas));
 
@@ -610,7 +629,8 @@
             nombre.textContent = st.nombre;
             const numeros = document.createElement('div');
             numeros.className = 'stat-numbers';
-            [['#721c24', '🔴 Fallas: ', st.fallas], ['#856404', '🟠 Retardos: ', st.retardos], ['#5a32a3', '🟣 Evasiones: ', st.evasiones]]
+            [['#721c24', '🔴 Fallas: ', st.fallas], ['#856404', '🟠 Retardos: ', st.retardos],
+             ['#5a32a3', '🟣 Evasiones: ', st.evasiones], ['#555', '📅 Clases: ', st.clases]]
                 .forEach(([color, etiqueta, valor]) => {
                     const span = document.createElement('span');
                     span.style.color = color;
@@ -624,6 +644,82 @@
             fragmento.appendChild(card);
         });
         container.replaceChildren(fragmento);
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  8B. CLASES APARTADAS (rechazadas por el servidor)
+     * ══════════════════════════════════════════════════════════════════ */
+    function apartadasPropias() {
+        return leerLS(CLAVES.CUARENTENA, []).filter(esPropia);
+    }
+
+    function actualizarBannerApartadas() {
+        const banner = document.getElementById('bannerApartadas');
+        if (!banner) return;
+        const n = apartadasPropias().length;
+        banner.style.display = n > 0 ? 'block' : 'none';
+        banner.textContent = `⚠️ ${n} clase(s) apartada(s) por el servidor. Toque aquí para revisarlas.`;
+    }
+
+    function renderApartadas() {
+        const container = document.getElementById('apartadasContainer');
+        const lista = apartadasPropias();
+        if (lista.length === 0) return mostrarMensaje(container, '🟢 No tiene clases apartadas.', '#155724');
+
+        const fragmento = document.createDocumentFragment();
+        if (lista.length > 1) {
+            const todas = document.createElement('button');
+            todas.className = 'btn-panel';
+            todas.textContent = `↩️ Reintentar las ${lista.length} clases`;
+            todas.onclick = () => reintentarApartadas(lista.map(s => s.session_id));
+            fragmento.appendChild(todas);
+        }
+        lista.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'apartada-card';
+            const titulo = document.createElement('b');
+            titulo.textContent = `Grupo ${s.grupo} · ${s.fecha} · ${s.registros.length} estudiantes`;
+            const motivo = document.createElement('div');
+            motivo.className = 'apartada-motivo';
+            motivo.textContent = 'Motivo: ' + (s.motivo_rechazo || 'sin detalle');
+            const acciones = document.createElement('div');
+            acciones.className = 'apartada-acciones';
+            const btnR = document.createElement('button');
+            btnR.className = 'btn-reintentar';
+            btnR.textContent = '↩️ Reintentar';
+            btnR.onclick = () => reintentarApartadas([s.session_id]);
+            const btnD = document.createElement('button');
+            btnD.className = 'btn-descartar';
+            btnD.textContent = '🗑️ Descartar';
+            btnD.onclick = () => descartarApartada(s);
+            acciones.append(btnR, btnD);
+            card.append(titulo, motivo, acciones);
+            fragmento.appendChild(card);
+        });
+        container.replaceChildren(fragmento);
+    }
+
+    /** Devuelve las clases al outbox (primero se guarda el outbox: nunca quedan en ningún lado) y sincroniza. */
+    async function reintentarApartadas(ids) {
+        const elegidas = new Set(ids);
+        const cuarentena = leerLS(CLAVES.CUARENTENA, []);
+        const yaEnOutbox = new Set(outbox.map(s => s.session_id));
+        const aMover = cuarentena.filter(s => elegidas.has(s.session_id) && !yaEnOutbox.has(s.session_id))
+                                 .map(({ motivo_rechazo, ...s }) => s);
+        const nuevoOutbox = outbox.concat(aMover);
+        if (!guardarLS(CLAVES.OUTBOX, nuevoOutbox)) return alert('⚠️ Memoria llena: no se pudo mover la clase.');
+        outbox = nuevoOutbox;
+        guardarLS(CLAVES.CUARENTENA, cuarentena.filter(s => !elegidas.has(s.session_id)));
+        actualizarContadorPendientes();
+        renderActiveView();
+        await subirAsistencia();
+    }
+
+    function descartarApartada(sesion) {
+        if (!confirm(`¿Eliminar DEFINITIVAMENTE la clase del grupo ${sesion.grupo} del ${sesion.fecha} (${sesion.registros.length} estudiantes)?\n\nEsta asistencia no llegará al colegio y no se puede recuperar.`)) return;
+        guardarLS(CLAVES.CUARENTENA, leerLS(CLAVES.CUARENTENA, []).filter(s => s.session_id !== sesion.session_id));
+        actualizarBannerApartadas();
+        renderActiveView();
     }
 
     /* ════════════════════════════════════════════════════════════════════
@@ -689,7 +785,7 @@
 
             const aviso = aplicarDatosServidor(data);
             document.getElementById('lblDocente').textContent = docente.nombre;
-            alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.${resumenReemplazos()}${aviso}`);
+            alert(`✅ Datos actualizados:\n${db.length} estudiantes en sus listas.${resumenReemplazos()}${aviso}`);
             cargarGrupos();
             renderActiveView();
         } catch (err) {
@@ -774,11 +870,12 @@
             ? `✅ ${confirmadas} clase(s) confirmada(s) por el servidor.\n${insertados} registros nuevos` +
               (duplicados > 0 ? `, ${duplicados} ya estaban guardados (no se duplicaron).` : '.')
             : '';
-        if (rechazadas.length > 0) mensaje += `\n\n⚠️ ${rechazadas.length} clase(s) rechazada(s) y apartada(s):\n` + rechazadas.join('\n');
+        if (rechazadas.length > 0) mensaje += `\n\n⚠️ ${rechazadas.length} clase(s) rechazada(s) y apartada(s):\n` + rechazadas.join('\n') + '\nPuede revisarlas en el aviso amarillo de "Tomar Lista".';
         if (errorFinal) mensaje += (mensaje ? '\n\n' : '') + '❌ ' + explicarError(errorFinal);
         const pendientes = outbox.filter(esPropia).length;
         if (pendientes > 0) mensaje += `\n\nQuedan ${pendientes} clase(s) pendiente(s) en el celular.`;
 
+        renderActiveView();
         if (errorFinal && errorFinal.message === 'CODIGO_REVOCADO') mostrarActivacion(mensaje);
         else alert(mensaje);
     }
