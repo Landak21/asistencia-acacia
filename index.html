@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v2.0.0 (Fase 1B · Integridad)       ║
+  ║  ASISTENCIA ACACIA II · Frontend v2.0.1 (Fase 1B · Integridad)       ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V2.0_20260916                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V2.0.1_20260916                        ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -30,13 +30,13 @@
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '2.0.0'
+            VERSION_APP: '2.0.1'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#2c3e50">
@@ -50,7 +50,7 @@
             --evasion-bg: #e2d9f3; --evasion-text: #5a32a3;
             --acacia-blue: #2c3e50;
         }
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 
         /* Login */
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--acacia-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.3s; }
@@ -58,19 +58,19 @@
         .btn-login { background-color: #28a745; color: white; padding: 12px 30px; font-size: 18px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
         .login-footer { margin-top: auto; padding-bottom: 30px; font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
 
-        #appContent { display: none; flex-direction: column; height: 100vh; }
-        header { background-color: var(--acacia-blue); color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        #appContent { display: none; flex-direction: column; height: 100%; min-height: 0; }
+        header { flex-shrink: 0; background-color: var(--acacia-blue); color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
         .header-controls { display: flex; justify-content: space-between; margin-top: 10px; gap: 10px; }
         select, input[type="date"] { padding: 8px; border-radius: 5px; border: none; font-size: 14px; flex: 1; }
 
-        .cloud-controls { display: flex; justify-content: space-between; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        .cloud-controls { flex-shrink: 0; display: flex; justify-content: space-between; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; font-size: 13px; }
         .sync-btn { background: none; border: 1px solid #007bff; color: #007bff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .sync-btn:disabled { opacity: 0.5; cursor: wait; }
 
         #groupTotalBanner { display: none; background-color: #e9ecef; text-align: center; padding: 8px; font-size: 14px; color: #333; font-weight: bold; }
         #statsDashboard { display: none; justify-content: space-around; background-color: #fff; padding: 12px; border-bottom: 2px solid #eee; font-size: 14px; font-weight: bold; }
 
-        .view-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 90px; display: none; }
+        .view-container { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 15px; display: none; }
         .view-active { display: block; }
 
         .student-card { padding: 15px; margin-bottom: 10px; border-radius: 8px; font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); user-select: none; }
@@ -85,17 +85,19 @@
         .alert-red { background: #ffebeb; border-left: 5px solid #dc3545; }
 
         .status-badge { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.5); padding: 4px 8px; border-radius: 12px; }
-        .fab-container { position: fixed; bottom: 65px; left: 0; width: 100%; display: flex; justify-content: center; padding: 0 20px; box-sizing: border-box; pointer-events: none; }
-        .btn-save { background-color: #28a745; color: white; width: 100%; padding: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: auto; }
+        /* Base inferior: ocupa su propio espacio, nunca tapa la lista */
+        .bottom-dock { flex-shrink: 0; background: white; border-top: 1px solid #ddd; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; }
+        .fab-container { display: flex; justify-content: center; padding: 10px 20px 0; box-sizing: border-box; }
+        .btn-save { background-color: #28a745; color: white; width: 100%; padding: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; }
 
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 10px 0; z-index: 20; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); }
+        .bottom-nav { display: flex; justify-content: space-around; padding: 10px 0; }
         .nav-item { text-align: center; color: #666; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; padding: 5px 0; }
         .nav-active { color: var(--acacia-blue); border-bottom: 3px solid var(--acacia-blue); }
 
         .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
         .mensaje-vacio { text-align: center; padding: 20px; color: #666; }
 
-        .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+        .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -136,10 +138,7 @@
                 <div style="color: #5a32a3;">🟣 <span id="cEva">0</span></div>
             </div>
             <div id="listContainer"></div>
-            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE S. · v<span class="lblVersion"></span></div>
-            <div class="fab-container" id="fabSave">
-                <button class="btn-save" id="btnGuardar" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
-            </div>
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
         </div>
 
         <!-- VISTA 2: ESTADÍSTICAS HISTÓRICAS -->
@@ -148,12 +147,17 @@
                 Historial acumulado del grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.
             </div>
             <div id="statsContainer"></div>
-            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE S. · v<span class="lblVersion"></span></div>
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
         </div>
 
-        <div class="bottom-nav">
-            <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
-            <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
+        <div class="bottom-dock">
+            <div class="fab-container" id="fabSave">
+                <button class="btn-save" id="btnGuardar" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
+            </div>
+            <div class="bottom-nav">
+                <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
+                <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
+            </div>
         </div>
     </div>
 
