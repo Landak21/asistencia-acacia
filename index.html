@@ -1,13 +1,47 @@
 <!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  ASISTENCIA ACACIA II · Frontend v2.0.0 (Fase 1B · Integridad)       ║
+  ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V2.0_20260916                          ║
+  ║                                                                      ║
+  ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
+  ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
 <html lang="es">
 <head>
+    <!-- ════════════════════════ CONFIGURACIÓN ════════════════════════ -->
+    <script>
+        const CONFIG = Object.freeze({
+
+            // 1) URL de la API (Apps Script → Implementar → Administrar implementaciones → "URL de la aplicación web").
+            //    Pegue la URL completa entre las comillas. Termina en /exec
+            //    Si se "Actualiza versión" (lápiz ✏️) la URL NO cambia y no hay que tocar esto.
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzX1LKZdloBfcF4fzH_wAgjPRWDqbjSbYK4dourJGx1kvVMWU5Zkw3b9UUFixdQ4TyHfQ/exec',
+
+            // 2) PIN de acceso de docentes (4 dígitos).
+            //    ⚠️ Es visible en GitHub: evita que estudiantes manipulen el celular, NO protege los datos (Fase 2).
+            PIN_ACCESO: '2026',
+
+            // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
+            VERSION_API_REQUERIDA: '2.0.0',
+
+            // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
+            SESIONES_POR_ENVIO: 10,
+
+            VERSION_APP: '2.0.0'
+        });
+    </script>
+    <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#2c3e50">
     <title>Asistencia Acacia II</title>
-    
+
     <style>
         :root {
             --presente-bg: #d4edda; --presente-text: #155724;
@@ -28,43 +62,39 @@
         header { background-color: var(--acacia-blue); color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
         .header-controls { display: flex; justify-content: space-between; margin-top: 10px; gap: 10px; }
         select, input[type="date"] { padding: 8px; border-radius: 5px; border: none; font-size: 14px; flex: 1; }
-        
+
         .cloud-controls { display: flex; justify-content: space-between; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; font-size: 13px; }
         .sync-btn { background: none; border: 1px solid #007bff; color: #007bff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        
-        /* Dashboard Diario y Total */
+        .sync-btn:disabled { opacity: 0.5; cursor: wait; }
+
         #groupTotalBanner { display: none; background-color: #e9ecef; text-align: center; padding: 8px; font-size: 14px; color: #333; font-weight: bold; }
         #statsDashboard { display: none; justify-content: space-around; background-color: #fff; padding: 12px; border-bottom: 2px solid #eee; font-size: 14px; font-weight: bold; }
-        
-        /* Vistas (Pestañas) */
+
         .view-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 90px; display: none; }
         .view-active { display: block; }
-        
-        /* Tarjetas Asistencia */
+
         .student-card { padding: 15px; margin-bottom: 10px; border-radius: 8px; font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); user-select: none; }
         .estado-Presente { background-color: var(--presente-bg); color: var(--presente-text); border-left: 5px solid #28a745; }
         .estado-Falla { background-color: var(--falla-bg); color: var(--falla-text); border-left: 5px solid #dc3545; }
         .estado-Retardo { background-color: var(--retardo-bg); color: var(--retardo-text); border-left: 5px solid #ffc107; }
         .estado-Evasion { background-color: var(--evasion-bg); color: var(--evasion-text); border-left: 5px solid #6f42c1; }
-        
-        /* Tarjetas Estadísticas */
+
         .stat-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .stat-name { font-weight: bold; font-size: 16px; margin-bottom: 8px; }
-        .stat-numbers { display: flex; gap: 10px; font-size: 13px; }
+        .stat-numbers { display: flex; gap: 10px; font-size: 13px; flex-wrap: wrap; }
         .alert-red { background: #ffebeb; border-left: 5px solid #dc3545; }
-        
+
         .status-badge { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.5); padding: 4px 8px; border-radius: 12px; }
         .fab-container { position: fixed; bottom: 65px; left: 0; width: 100%; display: flex; justify-content: center; padding: 0 20px; box-sizing: border-box; pointer-events: none; }
         .btn-save { background-color: #28a745; color: white; width: 100%; padding: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: auto; }
-        
-        /* Menú de Navegación Inferior */
+
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 10px 0; z-index: 20; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); }
         .nav-item { text-align: center; color: #666; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; padding: 5px 0; }
         .nav-active { color: var(--acacia-blue); border-bottom: 3px solid var(--acacia-blue); }
-        
+
         .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
-        
-        /* Firma del Autor */
+        .mensaje-vacio { text-align: center; padding: 20px; color: #666; }
+
         .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
@@ -75,7 +105,7 @@
             <h2>Colegio Acacia II</h2>
             <input type="password" id="pinInput" class="pin-input" placeholder="PIN" maxlength="4" pattern="[0-9]*" inputmode="numeric">
             <button class="btn-login" onclick="verificarPIN()">Ingresar</button>
-            <p id="pinError" style="color: #ffb8b8; display: none; margin-top: 10px;">PIN Incorrecto</p>
+            <p id="pinError" style="color: #ffb8b8; display: none; margin-top: 10px;">PIN incorrecto</p>
         </div>
         <div class="login-footer">App elaborada por ELIOT MANRIQUE</div>
     </div>
@@ -85,34 +115,30 @@
             <div style="font-size: 18px; font-weight: bold;">Acacia II - Asistencia</div>
             <div class="header-controls">
                 <input type="date" id="datePicker">
-                <select id="groupSelector" onchange="renderActiveView()">
+                <select id="groupSelector" onchange="alCambiarGrupo()">
                     <option value="">Selecciona un grupo...</option>
                 </select>
             </div>
         </header>
 
         <div class="cloud-controls">
-            <div><button class="sync-btn" onclick="descargarDatos()">1. Bajar Listas y Datos 📥</button></div>
+            <div><button class="sync-btn" id="btnDescargar" onclick="descargarDatos()">1. Bajar Listas y Datos 📥</button></div>
             <div><button class="sync-btn" id="btnSync" onclick="subirAsistencia()">2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes" style="display:none;">0</span></button></div>
         </div>
 
         <!-- VISTA 1: TOMAR ASISTENCIA -->
         <div id="viewAsistencia" class="view-container view-active">
             <div id="groupTotalBanner">Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
-            
             <div id="statsDashboard">
                 <div style="color: #155724;">🟢 <span id="cPre">0</span></div>
                 <div style="color: #721c24;">🔴 <span id="cFal">0</span></div>
                 <div style="color: #856404;">🟠 <span id="cRet">0</span></div>
                 <div style="color: #5a32a3;">🟣 <span id="cEva">0</span></div>
             </div>
-            
             <div id="listContainer"></div>
-            
-            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
-            
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
             <div class="fab-container" id="fabSave">
-                <button class="btn-save" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
+                <button class="btn-save" id="btnGuardar" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
             </div>
         </div>
 
@@ -121,13 +147,10 @@
             <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: center;">
                 Historial acumulado del grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.
             </div>
-            
             <div id="statsContainer"></div>
-            
-            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
         </div>
 
-        <!-- MENÚ DE NAVEGACIÓN -->
         <div class="bottom-nav">
             <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
             <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
@@ -135,252 +158,492 @@
     </div>
 
     <script>
-        const PIN_ACCESO = "2026"; 
-        
-        // URL OFICIAL DE APPS SCRIPT YA INTEGRADA
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzX1LKZdloBfcF4fzH_wAgjPRWDqbjSbYK4dourJGx1kvVMWU5Zkw3b9UUFixdQ4TyHfQ/exec'; 
+    'use strict';
 
-        const estados = ['Presente', 'Falla', 'Retardo', 'Evasion'];
-        
-        let db = JSON.parse(localStorage.getItem('acacia_estudiantes')) || [];
-        let historial = JSON.parse(localStorage.getItem('acacia_historial')) || [];
-        let outbox = JSON.parse(localStorage.getItem('acacia_outbox')) || [];
-        let estadoActualClase = [];
-        let currentTab = 'Asistencia';
+    /* ════════════════════════════════════════════════════════════════════
+     *  1. ALMACENAMIENTO LOCAL SEGURO
+     *     - Un dato corrupto ya no bloquea la app (antes: pantalla muerta).
+     *     - Memoria llena se reporta como tal (antes: "error de conexión").
+     * ══════════════════════════════════════════════════════════════════ */
+    const CLAVES = Object.freeze({
+        ESTUDIANTES: 'acacia_estudiantes',
+        HISTORIAL: 'acacia_historial',
+        OUTBOX_V1: 'acacia_outbox',        // formato anterior (se migra una sola vez)
+        OUTBOX: 'acacia_outbox_v2',
+        CUARENTENA: 'acacia_rechazadas'    // clases que el servidor rechazó: no se pierden
+    });
+    const ESTADOS = ['Presente', 'Falla', 'Retardo', 'Evasion'];
 
-        function verificarPIN() {
-            const pin = document.getElementById('pinInput').value;
-            if(pin === PIN_ACCESO) {
-                document.getElementById('loginScreen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loginScreen').style.display = 'none';
-                    document.getElementById('appContent').style.display = 'flex';
-                    iniciarApp();
-                }, 300);
-            } else {
-                document.getElementById('pinError').style.display = 'block';
-                document.getElementById('pinInput').value = "";
+    function leerLS(clave, porDefecto) {
+        const crudo = localStorage.getItem(clave);
+        if (crudo === null) return porDefecto;
+        try {
+            return JSON.parse(crudo);
+        } catch (err) {
+            // Se conserva una copia del dato dañado antes de reemplazarlo
+            try { localStorage.setItem(clave + '_corrupto_' + Date.now(), crudo); } catch (_) {}
+            console.warn('Dato local dañado en', clave, err);
+            return porDefecto;
+        }
+    }
+
+    function guardarLS(clave, valor) {
+        try {
+            localStorage.setItem(clave, JSON.stringify(valor));
+            return true;
+        } catch (err) {
+            console.error('No se pudo guardar', clave, err);
+            return false;
+        }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  2. UTILIDADES
+     * ══════════════════════════════════════════════════════════════════ */
+
+    // Fecha LOCAL del celular (antes: UTC → después de las 19:00 marcaba el día siguiente)
+    function fechaLocalISO(d = new Date()) {
+        const dos = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+    }
+
+    // Identificador único por clase. Respaldo para navegadores antiguos sin randomUUID.
+    function nuevoSessionId() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        const bytes = new Uint8Array(16);
+        (window.crypto || window.msCrypto).getRandomValues(bytes);
+        return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const aTexto = v => (v === null || v === undefined) ? '' : String(v).trim();
+
+    function versionCompatible(actual, requerida) {
+        const a = aTexto(actual).split('.').map(Number), r = requerida.split('.').map(Number);
+        return a.length === 3 && a[0] === r[0] && (a[1] > r[1] || (a[1] === r[1] && a[2] >= r[2]));
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  3. ESTADO DE LA APP
+     * ══════════════════════════════════════════════════════════════════ */
+    let db = leerLS(CLAVES.ESTUDIANTES, []);
+    let historial = leerLS(CLAVES.HISTORIAL, []);
+    let outbox = leerLS(CLAVES.OUTBOX, []);
+    let estadoActualClase = [];
+    let grupoActual = '';
+    let currentTab = 'Asistencia';
+    let sincronizando = false;
+
+    /**
+     * Migración del outbox v1 (registros sueltos) a v2 (clases con session_id).
+     * Corta una clase cuando cambia fecha/grupo o cuando un estudiante se repite,
+     * así dos clases del mismo grupo guardadas seguidas NO se fusionan.
+     */
+    function migrarOutboxV1() {
+        const viejo = leerLS(CLAVES.OUTBOX_V1, null);
+        if (!Array.isArray(viejo) || viejo.length === 0) {
+            localStorage.removeItem(CLAVES.OUTBOX_V1);
+            return;
+        }
+        const sesiones = [];
+        let actual = null, idsVistos = new Set();
+        viejo.forEach(r => {
+            const fecha = aTexto(r.fecha), grupo = aTexto(r.grupo), id = aTexto(r.id);
+            if (!actual || actual.fecha !== fecha || actual.grupo !== grupo || idsVistos.has(id)) {
+                actual = { session_id: nuevoSessionId(), fecha, grupo, creado_en: new Date().toISOString(), migrada: true, registros: [] };
+                sesiones.push(actual);
+                idsVistos = new Set();
             }
+            idsVistos.add(id);
+            actual.registros.push({ id, nombre: aTexto(r.nombre), estado: aTexto(r.estado) });
+        });
+        const nuevo = outbox.concat(sesiones);
+        if (guardarLS(CLAVES.OUTBOX, nuevo)) {   // solo se borra lo viejo si lo nuevo quedó guardado
+            outbox = nuevo;
+            localStorage.removeItem(CLAVES.OUTBOX_V1);
         }
-        document.getElementById('pinInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') verificarPIN(); });
+    }
 
-        function iniciarApp() {
-            document.getElementById('datePicker').valueAsDate = new Date();
-            actualizarContadorPendientes();
-            cargarGrupos();
-            renderActiveView();
+    /* ════════════════════════════════════════════════════════════════════
+     *  4. ACCESO E INICIO
+     * ══════════════════════════════════════════════════════════════════ */
+    function verificarPIN() {
+        const pin = document.getElementById('pinInput').value;
+        if (pin === CONFIG.PIN_ACCESO) {
+            document.getElementById('loginScreen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContent').style.display = 'flex';
+                iniciarApp();
+            }, 300);
+        } else {
+            document.getElementById('pinError').style.display = 'block';
+            document.getElementById('pinInput').value = '';
         }
+    }
+    document.getElementById('pinInput').addEventListener('keypress', e => { if (e.key === 'Enter') verificarPIN(); });
 
-        function cambiarPestana(tabName) {
-            currentTab = tabName;
-            
-            document.getElementById('tabAsistencia').className = 'nav-item';
-            document.getElementById('tabStats').className = 'nav-item';
-            document.getElementById(`tab${tabName === 'Asistencia' ? 'Asistencia' : 'Stats'}`).className = 'nav-item nav-active';
-            
-            document.getElementById('viewAsistencia').classList.remove('view-active');
-            document.getElementById('viewEstadisticas').classList.remove('view-active');
-            document.getElementById(`view${tabName}`).classList.add('view-active');
-            
-            renderActiveView();
-        }
+    function iniciarApp() {
+        document.querySelectorAll('.lblVersion').forEach(el => el.textContent = CONFIG.VERSION_APP);
+        document.getElementById('datePicker').value = fechaLocalISO();
+        // Pide al navegador no borrar los datos locales (clave en iPhone)
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+        migrarOutboxV1();
+        actualizarContadorPendientes();
+        cargarGrupos();
+        renderActiveView();
+    }
 
-        function renderActiveView() {
-            if(currentTab === 'Asistencia') {
-                document.getElementById('fabSave').style.display = 'flex';
-                renderList();
-            } else {
-                document.getElementById('fabSave').style.display = 'none';
-                renderEstadisticas();
-            }
-        }
+    /* ════════════════════════════════════════════════════════════════════
+     *  5. NAVEGACIÓN
+     * ══════════════════════════════════════════════════════════════════ */
+    function cambiarPestana(tabName) {
+        currentTab = tabName;
+        document.getElementById('tabAsistencia').className = 'nav-item' + (tabName === 'Asistencia' ? ' nav-active' : '');
+        document.getElementById('tabStats').className = 'nav-item' + (tabName === 'Estadisticas' ? ' nav-active' : '');
+        document.getElementById('viewAsistencia').classList.toggle('view-active', tabName === 'Asistencia');
+        document.getElementById('viewEstadisticas').classList.toggle('view-active', tabName === 'Estadisticas');
+        renderActiveView();
+    }
 
-        function cargarGrupos() {
-            const selector = document.getElementById('groupSelector');
-            selector.innerHTML = '<option value="">Selecciona un grupo...</option>';
-            if (db.length > 0) {
-                let gruposUnicos = [...new Set(db.map(s => s.group ? s.group.toString().trim() : ''))];
-                gruposUnicos = gruposUnicos.filter(g => g !== '').sort();
-                gruposUnicos.forEach(grupo => {
-                    const option = document.createElement('option');
-                    option.value = grupo; option.innerText = grupo;
-                    selector.appendChild(option);
-                });
-            }
-        }
+    function renderActiveView() {
+        const enAsistencia = currentTab === 'Asistencia';
+        document.getElementById('fabSave').style.display = enAsistencia ? 'flex' : 'none';
+        enAsistencia ? renderList() : renderEstadisticas();
+    }
 
-        function renderList() {
-            const container = document.getElementById('listContainer');
-            const selectedGroup = document.getElementById('groupSelector').value;
-            
-            if (!selectedGroup) {
-                document.getElementById('statsDashboard').style.display = 'none';
-                document.getElementById('groupTotalBanner').style.display = 'none';
-                return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Selecciona un grupo para empezar.</div>';
-            }
-            if (db.length === 0) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Sin datos. Pulsa "1. Bajar Listas".</div>';
+    function hayMarcasSinGuardar() {
+        return estadoActualClase.some(s => s.status !== 'Presente');
+    }
 
-            const filteredStudents = db.filter(s => s.group && s.group.toString().trim() === selectedGroup);
-            
-            if(estadoActualClase.length === 0 || estadoActualClase[0].group !== selectedGroup) {
-                estadoActualClase = filteredStudents.map(s => ({...s, status: 'Presente'}));
-            }
-            
-            container.innerHTML = ''; 
-            actualizarDashboardDiario();
-
-            estadoActualClase.forEach((student, index) => {
-                const card = document.createElement('div');
-                card.className = `student-card estado-${student.status}`;
-                card.innerHTML = `<span>${student.name}</span> <span class="status-badge">${student.status}</span>`;
-
-                card.onclick = () => {
-                    const nextIndex = (estados.indexOf(estadoActualClase[index].status) + 1) % estados.length;
-                    estadoActualClase[index].status = estados[nextIndex];
-                    card.className = `student-card estado-${estadoActualClase[index].status}`;
-                    card.querySelector('.status-badge').innerText = estadoActualClase[index].status;
-                    actualizarDashboardDiario();
-                };
-                container.appendChild(card);
-            });
-        }
-
-        function actualizarDashboardDiario() {
-            if (estadoActualClase.length === 0) {
-                document.getElementById('statsDashboard').style.display = 'none';
-                document.getElementById('groupTotalBanner').style.display = 'none';
+    // Evita perder lo marcado si el docente cambia de grupo por error
+    function alCambiarGrupo() {
+        const selector = document.getElementById('groupSelector');
+        if (hayMarcasSinGuardar() && selector.value !== grupoActual) {
+            if (!confirm(`Tiene marcas sin guardar en el grupo ${grupoActual}.\n¿Descartarlas y cambiar de grupo?`)) {
+                selector.value = grupoActual;
                 return;
             }
-            
-            document.getElementById('groupTotalBanner').style.display = 'block';
-            document.getElementById('lblTotal').innerText = estadoActualClase.length;
-            
-            document.getElementById('statsDashboard').style.display = 'flex';
-            let p = 0, f = 0, r = 0, e = 0;
-            estadoActualClase.forEach(s => {
-                if(s.status === 'Presente') p++;
-                if(s.status === 'Falla') f++;
-                if(s.status === 'Retardo') r++;
-                if(s.status === 'Evasion') e++;
-            });
-            document.getElementById('cPre').innerText = p; document.getElementById('cFal').innerText = f;
-            document.getElementById('cRet').innerText = r; document.getElementById('cEva').innerText = e;
+        }
+        grupoActual = selector.value;
+        estadoActualClase = [];
+        renderActiveView();
+    }
+
+    function cargarGrupos() {
+        const selector = document.getElementById('groupSelector');
+        selector.innerHTML = '<option value="">Selecciona un grupo...</option>';
+        const grupos = [...new Set(db.map(s => aTexto(s.group)))].filter(g => g !== '').sort();
+        grupos.forEach(grupo => selector.appendChild(new Option(grupo, grupo)));
+        selector.value = grupos.includes(grupoActual) ? grupoActual : '';
+        grupoActual = selector.value;
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  6. TOMA DE ASISTENCIA
+     * ══════════════════════════════════════════════════════════════════ */
+    function mostrarMensaje(contenedor, texto, color) {
+        const div = document.createElement('div');
+        div.className = 'mensaje-vacio';
+        if (color) { div.style.color = color; div.style.fontWeight = 'bold'; }
+        div.textContent = texto;
+        contenedor.replaceChildren(div);
+    }
+
+    function renderList() {
+        const container = document.getElementById('listContainer');
+        const grupo = grupoActual;
+
+        if (db.length === 0 || !grupo) {
+            document.getElementById('statsDashboard').style.display = 'none';
+            document.getElementById('groupTotalBanner').style.display = 'none';
+            return mostrarMensaje(container, db.length === 0 ? 'Sin datos. Pulsa "1. Bajar Listas".' : 'Selecciona un grupo para empezar.');
         }
 
-        function guardarClaseLocal() {
-            const selectedGroup = document.getElementById('groupSelector').value;
-            const selectedDate = document.getElementById('datePicker').value;
+        if (estadoActualClase.length === 0 || estadoActualClase[0].group !== grupo) {
+            estadoActualClase = db.filter(s => aTexto(s.group) === grupo)
+                                  .map(s => ({ id: aTexto(s.id), name: aTexto(s.name), group: grupo, status: 'Presente' }));
+        }
 
-            if (!selectedGroup) return alert("Selecciona un grupo antes de guardar.");
+        const fragmento = document.createDocumentFragment();   // un solo repintado
+        estadoActualClase.forEach((student, index) => {
+            const card = document.createElement('div');
+            card.className = `student-card estado-${student.status}`;
+            const nombre = document.createElement('span');
+            nombre.textContent = student.name;                   // textContent: sin inyección de HTML
+            const badge = document.createElement('span');
+            badge.className = 'status-badge';
+            badge.textContent = student.status;
+            card.append(nombre, badge);
+            card.onclick = () => {
+                const s = estadoActualClase[index];
+                s.status = ESTADOS[(ESTADOS.indexOf(s.status) + 1) % ESTADOS.length];
+                card.className = `student-card estado-${s.status}`;
+                badge.textContent = s.status;
+                actualizarDashboardDiario();
+            };
+            fragmento.appendChild(card);
+        });
+        container.replaceChildren(fragmento);
+        actualizarDashboardDiario();
+    }
 
-            estadoActualClase.forEach(student => {
-                outbox.push({ fecha: selectedDate, grupo: selectedGroup, id: student.id, nombre: student.name, estado: student.status });
-            });
+    function actualizarDashboardDiario() {
+        const hay = estadoActualClase.length > 0;
+        document.getElementById('statsDashboard').style.display = hay ? 'flex' : 'none';
+        document.getElementById('groupTotalBanner').style.display = hay ? 'block' : 'none';
+        if (!hay) return;
+        const c = { Presente: 0, Falla: 0, Retardo: 0, Evasion: 0 };
+        estadoActualClase.forEach(s => c[s.status]++);
+        document.getElementById('lblTotal').textContent = estadoActualClase.length;
+        document.getElementById('cPre').textContent = c.Presente;
+        document.getElementById('cFal').textContent = c.Falla;
+        document.getElementById('cRet').textContent = c.Retardo;
+        document.getElementById('cEva').textContent = c.Evasion;
+    }
 
-            localStorage.setItem('acacia_outbox', JSON.stringify(outbox));
-            actualizarContadorPendientes();
-            alert(`✅ Asistencia guardada localmente.\nUsa "2. Sincronizar" luego.`);
-            document.getElementById('groupSelector').value = "";
-            estadoActualClase = [];
+    function existeListaPrevia(fecha, grupo) {
+        const enOutbox = outbox.some(s => s.fecha === fecha && s.grupo === grupo);
+        const enHistorial = historial.some(h => aTexto(h.fecha) === fecha && aTexto(h.grupo) === grupo);
+        return enOutbox || enHistorial;
+    }
+
+    function guardarClaseLocal() {
+        const grupo = grupoActual;
+        const fecha = document.getElementById('datePicker').value;
+
+        if (!grupo) return alert('Selecciona un grupo antes de guardar.');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert('Selecciona la fecha de la clase antes de guardar.');
+        if (estadoActualClase.length === 0) return alert('El grupo no tiene estudiantes cargados.');
+        if (fecha > fechaLocalISO()) {
+            if (!confirm(`La fecha ${fecha} es posterior a hoy.\n¿Guardar de todas formas?`)) return;
+        }
+        if (existeListaPrevia(fecha, grupo)) {
+            if (!confirm(`Ya hay una lista del grupo ${grupo} para el ${fecha}.\n\n` +
+                         `Pulse ACEPTAR solo si es OTRA clase (otra asignatura u otro bloque).\n` +
+                         `Pulse CANCELAR si es la misma clase repetida.`)) return;
+        }
+
+        const sesion = {
+            session_id: nuevoSessionId(),
+            fecha: fecha,
+            grupo: grupo,
+            creado_en: new Date().toISOString(),
+            registros: estadoActualClase.map(s => ({ id: s.id, nombre: s.name, estado: s.status }))
+        };
+
+        const nuevoOutbox = outbox.concat([sesion]);
+        if (!guardarLS(CLAVES.OUTBOX, nuevoOutbox)) {
+            return alert('⚠️ NO SE GUARDÓ: la memoria del celular está llena.\n' +
+                         'No cierre la app. Conéctese a internet y pulse "2. Sincronizar".');
+        }
+        outbox = nuevoOutbox;
+        actualizarContadorPendientes();
+        alert(`✅ Clase guardada en el celular (${sesion.registros.length} estudiantes).\nUse "2. Sincronizar" cuando tenga internet.`);
+
+        estadoActualClase = [];
+        grupoActual = '';
+        document.getElementById('groupSelector').value = '';
+        renderActiveView();
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  7. ESTADÍSTICAS
+     * ══════════════════════════════════════════════════════════════════ */
+    function renderEstadisticas() {
+        const container = document.getElementById('statsContainer');
+        const grupo = grupoActual;
+
+        if (!grupo) return mostrarMensaje(container, 'Selecciona un grupo para ver estadísticas.');
+        if (historial.length === 0) return mostrarMensaje(container, 'No hay historial descargado.');
+
+        const statsMap = {};
+        db.filter(s => aTexto(s.group) === grupo).forEach(s => {
+            statsMap[aTexto(s.id)] = { nombre: aTexto(s.name), fallas: 0, retardos: 0, evasiones: 0 };
+        });
+        historial.forEach(r => {
+            const st = aTexto(r.grupo) === grupo && statsMap[aTexto(r.id)];
+            if (!st) return;
+            if (r.estado === 'Falla') st.fallas++;
+            else if (r.estado === 'Retardo') st.retardos++;
+            else if (r.estado === 'Evasion') st.evasiones++;
+        });
+
+        const lista = Object.values(statsMap)
+            .filter(st => st.fallas + st.retardos + st.evasiones > 0)
+            .sort((a, b) => (b.evasiones - a.evasiones) || (b.fallas - a.fallas));
+
+        if (lista.length === 0) return mostrarMensaje(container, '🟢 Excelente: nadie en este grupo tiene faltas registradas.', '#155724');
+
+        const fragmento = document.createDocumentFragment();
+        lista.forEach(st => {
+            const card = document.createElement('div');
+            card.className = 'stat-card' + ((st.fallas >= 3 || st.evasiones >= 1) ? ' alert-red' : '');
+            const nombre = document.createElement('div');
+            nombre.className = 'stat-name';
+            nombre.textContent = st.nombre;
+            const numeros = document.createElement('div');
+            numeros.className = 'stat-numbers';
+            [['#721c24', '🔴 Fallas: ', st.fallas], ['#856404', '🟠 Retardos: ', st.retardos], ['#5a32a3', '🟣 Evasiones: ', st.evasiones]]
+                .forEach(([color, etiqueta, valor]) => {
+                    const span = document.createElement('span');
+                    span.style.color = color;
+                    span.append(etiqueta);
+                    const b = document.createElement('b');
+                    b.textContent = valor;
+                    span.appendChild(b);
+                    numeros.appendChild(span);
+                });
+            card.append(nombre, numeros);
+            fragmento.appendChild(card);
+        });
+        container.replaceChildren(fragmento);
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  8. SINCRONIZACIÓN CON EL SERVIDOR
+     * ══════════════════════════════════════════════════════════════════ */
+    function actualizarContadorPendientes() {
+        const badge = document.getElementById('pendingCount');
+        if (!badge) return;
+        badge.textContent = outbox.length;                     // cuenta CLASES pendientes
+        badge.style.display = outbox.length > 0 ? 'inline-block' : 'none';
+    }
+
+    function textoBotonSync(texto) {
+        const btn = document.getElementById('btnSync');
+        btn.firstChild.nodeValue = texto;                       // conserva el badge
+    }
+
+    // text/plain evita la verificación CORS previa y SÍ permite leer la respuesta
+    async function llamarAPI(metodo, cuerpo) {
+        const opciones = { method: metodo, redirect: 'follow' };
+        if (cuerpo !== undefined) {
+            opciones.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+            opciones.body = JSON.stringify(cuerpo);
+        }
+        let resp;
+        try {
+            resp = await fetch(CONFIG.SCRIPT_URL, opciones);
+        } catch (_) {
+            throw new Error('SIN_RED');
+        }
+        const texto = await resp.text();
+        try {
+            return JSON.parse(texto);
+        } catch (_) {
+            throw new Error('RESPUESTA_INVALIDA');                // p. ej. página de error de Google
+        }
+    }
+
+    function explicarError(err) {
+        switch (err.message) {
+            case 'SIN_RED': return 'No hay conexión a internet. Los datos siguen guardados en el celular.';
+            case 'RESPUESTA_INVALIDA': return 'El servidor respondió con un error. Avise a coordinación. Los datos siguen guardados en el celular.';
+            case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación. Los datos siguen guardados en el celular.';
+            default: return err.message + '\nLos datos siguen guardados en el celular.';
+        }
+    }
+
+    async function descargarDatos() {
+        const btn = document.getElementById('btnDescargar');
+        btn.disabled = true;
+        btn.textContent = 'Descargando...';
+        try {
+            const data = await llamarAPI('GET');
+            if (data.ok === false) throw new Error(data.error || 'Error del servidor al leer datos.');
+            if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
+            if (!Array.isArray(data.estudiantes)) throw new Error('RESPUESTA_INVALIDA');
+
+            db = data.estudiantes;
+            historial = Array.isArray(data.historial) ? data.historial : [];
+
+            let aviso = '';
+            if (!guardarLS(CLAVES.ESTUDIANTES, db)) {
+                aviso = '\n\n⚠️ Memoria llena: las listas funcionarán solo mientras la app esté abierta.';
+            } else if (!guardarLS(CLAVES.HISTORIAL, historial)) {
+                localStorage.removeItem(CLAVES.HISTORIAL);       // libera espacio para las clases pendientes
+                aviso = '\n\n⚠️ Memoria llena: las estadísticas no quedarán guardadas sin internet.';
+            }
+
+            alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.${aviso}`);
+            cargarGrupos();
             renderActiveView();
+        } catch (err) {
+            alert('❌ No se pudieron descargar los datos.\n' + explicarError(err));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '1. Bajar Listas y Datos 📥';
         }
+    }
 
-        function renderEstadisticas() {
-            const container = document.getElementById('statsContainer');
-            const selectedGroup = document.getElementById('groupSelector').value;
+    async function subirAsistencia() {
+        if (sincronizando) return;                              // bloquea doble toque
+        if (outbox.length === 0) return alert('No hay clases pendientes por enviar.');
 
-            if (!selectedGroup) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Selecciona un grupo para ver estadísticas.</div>';
-            if (historial.length === 0) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No hay historial descargado.</div>';
+        sincronizando = true;
+        const btn = document.getElementById('btnSync');
+        btn.disabled = true;
 
-            const groupStudents = db.filter(s => s.group && s.group.toString().trim() === selectedGroup);
-            const groupHistory = historial.filter(h => h.grupo && h.grupo.toString().trim() === selectedGroup);
+        let insertados = 0, duplicados = 0, confirmadas = 0;
+        const rechazadas = [];
+        let errorFinal = null;
 
-            let statsMap = {};
-            groupStudents.forEach(s => {
-                statsMap[s.id] = { nombre: s.name, fallas: 0, retardos: 0, evasiones: 0 };
-            });
-
-            groupHistory.forEach(record => {
-                if(statsMap[record.id]) {
-                    if(record.estado === 'Falla') statsMap[record.id].fallas++;
-                    if(record.estado === 'Retardo') statsMap[record.id].retardos++;
-                    if(record.estado === 'Evasion') statsMap[record.id].evasiones++;
-                }
-            });
-
-            let statsArray = Object.values(statsMap);
-            statsArray.sort((a, b) => {
-                if (b.evasiones !== a.evasiones) return b.evasiones - a.evasiones;
-                return b.fallas - a.fallas;
-            });
-
-            container.innerHTML = '';
-            statsArray.forEach(st => {
-                if (st.fallas === 0 && st.retardos === 0 && st.evasiones === 0) return;
-                let isAlert = (st.fallas >= 3 || st.evasiones >= 1);
-                
-                container.innerHTML += `
-                    <div class="stat-card ${isAlert ? 'alert-red' : ''}">
-                        <div class="stat-name">${st.nombre}</div>
-                        <div class="stat-numbers">
-                            <span style="color:#721c24;">🔴 Fallas: <b>${st.fallas}</b></span>
-                            <span style="color:#856404;">🟠 Retardos: <b>${st.retardos}</b></span>
-                            <span style="color:#5a32a3;">🟣 Evasiones: <b>${st.evasiones}</b></span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            if (container.innerHTML === '') {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:#155724; font-weight:bold;">🟢 Excelente: Nadie en este grupo tiene faltas registradas.</div>';
+        try {
+            const lotes = [];
+            for (let i = 0; i < outbox.length; i += CONFIG.SESIONES_POR_ENVIO) {
+                lotes.push(outbox.slice(i, i + CONFIG.SESIONES_POR_ENVIO));
             }
-        }
 
-        function actualizarContadorPendientes() {
-            const badge = document.getElementById('pendingCount');
-            if (outbox.length > 0) { badge.innerText = outbox.length; badge.style.display = 'inline-block'; } 
-            else { badge.style.display = 'none'; }
-        }
+            for (let n = 0; n < lotes.length; n++) {
+                textoBotonSync(`Enviando ${n + 1}/${lotes.length}... `);
+                const data = await llamarAPI('POST', { version: 2, sesiones: lotes[n] });
 
-        async function descargarDatos() {
-            try {
-                const btn = document.querySelector('button[onclick="descargarDatos()"]');
-                btn.innerText = "Descargando...";
-                
-                const response = await fetch(SCRIPT_URL);
-                const data = await response.json();
-                
-                if (data.estudiantes) {
-                    db = data.estudiantes;
-                    historial = data.historial;
-                    localStorage.setItem('acacia_estudiantes', JSON.stringify(db));
-                    localStorage.setItem('acacia_historial', JSON.stringify(historial));
-                    alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.`);
-                    cargarGrupos(); 
-                    renderActiveView();
+                if (!data.ok) {
+                    throw new Error(data.codigo === 'SERVIDOR_OCUPADO'
+                        ? 'Otro docente está sincronizando en este momento. Intente de nuevo en un minuto.'
+                        : (data.error || 'El servidor no confirmó el envío.'));
                 }
-                btn.innerText = "1. Bajar Listas y Datos 📥";
-            } catch (error) {
-                alert("❌ Error de conexión al descargar.");
-                document.querySelector('button[onclick="descargarDatos()"]').innerText = "1. Bajar Listas y Datos 📥";
+                if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
+
+                // Solo sale del celular lo que el servidor CONFIRMÓ o RECHAZÓ explícitamente
+                const idsOk = new Set(data.sesiones_confirmadas || []);
+                const motivos = new Map((data.sesiones_rechazadas || []).map(r => [r.session_id, r.motivo]));
+
+                const enCuarentena = outbox.filter(s => motivos.has(s.session_id))
+                                           .map(s => Object.assign({}, s, { motivo_rechazo: motivos.get(s.session_id) }));
+                if (enCuarentena.length > 0) {
+                    const cuarentena = leerLS(CLAVES.CUARENTENA, []).concat(enCuarentena);
+                    if (!guardarLS(CLAVES.CUARENTENA, cuarentena)) throw new Error('Memoria llena al apartar clases rechazadas.');
+                    enCuarentena.forEach(s => rechazadas.push(`${s.grupo} ${s.fecha}: ${s.motivo_rechazo}`));
+                }
+
+                const restante = outbox.filter(s => !idsOk.has(s.session_id) && !motivos.has(s.session_id));
+                guardarLS(CLAVES.OUTBOX, restante);
+                outbox = restante;
+                actualizarContadorPendientes();
+
+                insertados += data.insertados || 0;
+                duplicados += data.duplicados || 0;
+                confirmadas += idsOk.size;
             }
+        } catch (err) {
+            errorFinal = err;
+        } finally {
+            sincronizando = false;
+            btn.disabled = false;
+            textoBotonSync('2. Sincronizar 📤 ');
+            actualizarContadorPendientes();
         }
 
-        function subirAsistencia() {
-            if (outbox.length === 0) return alert("No hay asistencias pendientes para enviar.");
-            const btn = document.getElementById('btnSync');
-            btn.innerText = "Enviando...";
-
-            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(outbox) })
-            .then(() => {
-                outbox = []; localStorage.removeItem('acacia_outbox'); actualizarContadorPendientes();
-                btn.innerHTML = '2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes" style="display:none;">0</span>';
-                setTimeout(() => alert("✅ ¡Sincronización enviada con éxito!"), 100);
-            }).catch(error => {
-                btn.innerHTML = '2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes">' + outbox.length + '</span>';
-                alert("❌ Error de red.");
-            });
-        }
+        let mensaje = confirmadas > 0
+            ? `✅ ${confirmadas} clase(s) confirmada(s) por el servidor.\n${insertados} registros nuevos` +
+              (duplicados > 0 ? `, ${duplicados} ya estaban guardados (no se duplicaron).` : '.')
+            : '';
+        if (rechazadas.length > 0) mensaje += `\n\n⚠️ ${rechazadas.length} clase(s) rechazada(s) y apartada(s):\n` + rechazadas.join('\n');
+        if (errorFinal) mensaje += (mensaje ? '\n\n' : '') + '❌ ' + explicarError(errorFinal);
+        if (outbox.length > 0) mensaje += `\n\nQuedan ${outbox.length} clase(s) pendiente(s) en el celular.`;
+        alert(mensaje);
+    }
     </script>
 </body>
 </html>
