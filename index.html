@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2c3e50">
+    <title>Asistencia Acacia II</title>
+    
+    <style>
+        :root {
+            --presente-bg: #d4edda; --presente-text: #155724;
+            --falla-bg: #f8d7da; --falla-text: #721c24;
+            --retardo-bg: #fff3cd; --retardo-text: #856404;
+            --evasion-bg: #e2d9f3; --evasion-text: #5a32a3;
+            --acacia-blue: #2c3e50;
+        }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* Login */
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--acacia-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.3s; }
+        .pin-input { font-size: 24px; padding: 15px; width: 150px; text-align: center; letter-spacing: 10px; border-radius: 10px; border: none; margin: 20px 0; }
+        .btn-login { background-color: #28a745; color: white; padding: 12px 30px; font-size: 18px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        .login-footer { margin-top: auto; padding-bottom: 30px; font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
+
+        #appContent { display: none; flex-direction: column; height: 100vh; }
+        header { background-color: var(--acacia-blue); color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        .header-controls { display: flex; justify-content: space-between; margin-top: 10px; gap: 10px; }
+        select, input[type="date"] { padding: 8px; border-radius: 5px; border: none; font-size: 14px; flex: 1; }
+        
+        .cloud-controls { display: flex; justify-content: space-between; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        .sync-btn { background: none; border: 1px solid #007bff; color: #007bff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        /* Dashboard Diario y Total */
+        #groupTotalBanner { display: none; background-color: #e9ecef; text-align: center; padding: 8px; font-size: 14px; color: #333; font-weight: bold; }
+        #statsDashboard { display: none; justify-content: space-around; background-color: #fff; padding: 12px; border-bottom: 2px solid #eee; font-size: 14px; font-weight: bold; }
+        
+        /* Vistas (Pestañas) */
+        .view-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 90px; display: none; }
+        .view-active { display: block; }
+        
+        /* Tarjetas Asistencia */
+        .student-card { padding: 15px; margin-bottom: 10px; border-radius: 8px; font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); user-select: none; }
+        .estado-Presente { background-color: var(--presente-bg); color: var(--presente-text); border-left: 5px solid #28a745; }
+        .estado-Falla { background-color: var(--falla-bg); color: var(--falla-text); border-left: 5px solid #dc3545; }
+        .estado-Retardo { background-color: var(--retardo-bg); color: var(--retardo-text); border-left: 5px solid #ffc107; }
+        .estado-Evasion { background-color: var(--evasion-bg); color: var(--evasion-text); border-left: 5px solid #6f42c1; }
+        
+        /* Tarjetas Estadísticas */
+        .stat-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-name { font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+        .stat-numbers { display: flex; gap: 10px; font-size: 13px; }
+        .alert-red { background: #ffebeb; border-left: 5px solid #dc3545; }
+        
+        .status-badge { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.5); padding: 4px 8px; border-radius: 12px; }
+        .fab-container { position: fixed; bottom: 65px; left: 0; width: 100%; display: flex; justify-content: center; padding: 0 20px; box-sizing: border-box; pointer-events: none; }
+        .btn-save { background-color: #28a745; color: white; width: 100%; padding: 15px; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: auto; }
+        
+        /* Menú de Navegación Inferior */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 10px 0; z-index: 20; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); }
+        .nav-item { text-align: center; color: #666; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; padding: 5px 0; }
+        .nav-active { color: var(--acacia-blue); border-bottom: 3px solid var(--acacia-blue); }
+        
+        .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
+        
+        /* Firma del Autor */
+        .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%;">
+            <h2>Colegio Acacia II</h2>
+            <input type="password" id="pinInput" class="pin-input" placeholder="PIN" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+            <button class="btn-login" onclick="verificarPIN()">Ingresar</button>
+            <p id="pinError" style="color: #ffb8b8; display: none; margin-top: 10px;">PIN Incorrecto</p>
+        </div>
+        <!-- FIRMA EN LA PANTALLA DE INGRESO -->
+        <div class="login-footer">App elaborada por ELIOT MANRIQUE</div>
+    </div>
+
+    <div id="appContent">
+        <header>
+            <div style="font-size: 18px; font-weight: bold;">Acacia II - Asistencia</div>
+            <div class="header-controls">
+                <input type="date" id="datePicker">
+                <select id="groupSelector" onchange="renderActiveView()">
+                    <option value="">Selecciona un grupo...</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="cloud-controls">
+            <div><button class="sync-btn" onclick="descargarDatos()">1. Bajar Listas y Datos 📥</button></div>
+            <div><button class="sync-btn" id="btnSync" onclick="subirAsistencia()">2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes" style="display:none;">0</span></button></div>
+        </div>
+
+        <!-- VISTA 1: TOMAR ASISTENCIA -->
+        <div id="viewAsistencia" class="view-container view-active">
+            <!-- AQUÍ APARECE EL TOTAL DE ESTUDIANTES -->
+            <div id="groupTotalBanner">Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
+            
+            <div id="statsDashboard">
+                <div style="color: #155724;">🟢 <span id="cPre">0</span></div>
+                <div style="color: #721c24;">🔴 <span id="cFal">0</span></div>
+                <div style="color: #856404;">🟠 <span id="cRet">0</span></div>
+                <div style="color: #5a32a3;">🟣 <span id="cEva">0</span></div>
+            </div>
+            
+            <div id="listContainer"></div>
+            
+            <!-- FIRMA AL FINAL DE LA LISTA -->
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
+            
+            <div class="fab-container" id="fabSave">
+                <button class="btn-save" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
+            </div>
+        </div>
+
+        <!-- VISTA 2: ESTADÍSTICAS HISTÓRICAS -->
+        <div id="viewEstadisticas" class="view-container">
+            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: center;">
+                Historial acumulado del grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.
+            </div>
+            
+            <div id="statsContainer"></div>
+            
+            <!-- FIRMA AL FINAL DE LAS ESTADÍSTICAS -->
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE</div>
+        </div>
+
+        <!-- MENÚ DE NAVEGACIÓN -->
+        <div class="bottom-nav">
+            <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
+            <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
+        </div>
+    </div>
+
+    <script>
+        const PIN_ACCESO = "2026"; 
+        
+        // ==========================================
+        // ⚠️ PEGA AQUÍ LA NUEVA URL DE APPS SCRIPT 
+        // ==========================================
+        const SCRIPT_URL = 'TU_NUEVA_URL_DE_APPS_SCRIPT_AQUI'; 
+
+        const estados = ['Presente', 'Falla', 'Retardo', 'Evasion'];
+        
+        let db = JSON.parse(localStorage.getItem('acacia_estudiantes')) || [];
+        let historial = JSON.parse(localStorage.getItem('acacia_historial')) || [];
+        let outbox = JSON.parse(localStorage.getItem('acacia_outbox')) || [];
+        let estadoActualClase = [];
+        let currentTab = 'Asistencia';
+
+        // --- SISTEMA DE LOGIN ---
+        function verificarPIN() {
+            const pin = document.getElementById('pinInput').value;
+            if(pin === PIN_ACCESO) {
+                document.getElementById('loginScreen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appContent').style.display = 'flex';
+                    iniciarApp();
+                }, 300);
+            } else {
+                document.getElementById('pinError').style.display = 'block';
+                document.getElementById('pinInput').value = "";
+            }
+        }
+        document.getElementById('pinInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') verificarPIN(); });
+
+        // --- INICIALIZACIÓN Y NAVEGACIÓN ---
+        function iniciarApp() {
+            document.getElementById('datePicker').valueAsDate = new Date();
+            actualizarContadorPendientes();
+            cargarGrupos();
+            renderActiveView();
+        }
+
+        function cambiarPestana(tabName) {
+            currentTab = tabName;
+            
+            document.getElementById('tabAsistencia').className = 'nav-item';
+            document.getElementById('tabStats').className = 'nav-item';
+            document.getElementById(`tab${tabName === 'Asistencia' ? 'Asistencia' : 'Stats'}`).className = 'nav-item nav-active';
+            
+            document.getElementById('viewAsistencia').classList.remove('view-active');
+            document.getElementById('viewEstadisticas').classList.remove('view-active');
+            document.getElementById(`view${tabName}`).classList.add('view-active');
+            
+            renderActiveView();
+        }
+
+        function renderActiveView() {
+            if(currentTab === 'Asistencia') {
+                document.getElementById('fabSave').style.display = 'flex';
+                renderList();
+            } else {
+                document.getElementById('fabSave').style.display = 'none';
+                renderEstadisticas();
+            }
+        }
+
+        function cargarGrupos() {
+            const selector = document.getElementById('groupSelector');
+            selector.innerHTML = '<option value="">Selecciona un grupo...</option>';
+            if (db.length > 0) {
+                let gruposUnicos = [...new Set(db.map(s => s.group ? s.group.toString().trim() : ''))];
+                gruposUnicos = gruposUnicos.filter(g => g !== '').sort();
+                gruposUnicos.forEach(grupo => {
+                    const option = document.createElement('option');
+                    option.value = grupo; option.innerText = grupo;
+                    selector.appendChild(option);
+                });
+            }
+        }
+
+        // --- VISTA 1: ASISTENCIA ---
+        function renderList() {
+            const container = document.getElementById('listContainer');
+            const selectedGroup = document.getElementById('groupSelector').value;
+            
+            if (!selectedGroup) {
+                document.getElementById('statsDashboard').style.display = 'none';
+                document.getElementById('groupTotalBanner').style.display = 'none';
+                return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Selecciona un grupo para empezar.</div>';
+            }
+            if (db.length === 0) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Sin datos. Pulsa "1. Bajar Listas".</div>';
+
+            const filteredStudents = db.filter(s => s.group && s.group.toString().trim() === selectedGroup);
+            
+            if(estadoActualClase.length === 0 || estadoActualClase[0].group !== selectedGroup) {
+                estadoActualClase = filteredStudents.map(s => ({...s, status: 'Presente'}));
+            }
+            
+            container.innerHTML = ''; 
+            actualizarDashboardDiario();
+
+            estadoActualClase.forEach((student, index) => {
+                const card = document.createElement('div');
+                card.className = `student-card estado-${student.status}`;
+                card.innerHTML = `<span>${student.name}</span> <span class="status-badge">${student.status}</span>`;
+
+                card.onclick = () => {
+                    const nextIndex = (estados.indexOf(estadoActualClase[index].status) + 1) % estados.length;
+                    estadoActualClase[index].status = estados[nextIndex];
+                    card.className = `student-card estado-${estadoActualClase[index].status}`;
+                    card.querySelector('.status-badge').innerText = estadoActualClase[index].status;
+                    actualizarDashboardDiario();
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function actualizarDashboardDiario() {
+            if (estadoActualClase.length === 0) {
+                document.getElementById('statsDashboard').style.display = 'none';
+                document.getElementById('groupTotalBanner').style.display = 'none';
+                return;
+            }
+            
+            // Mostrar contador total
+            document.getElementById('groupTotalBanner').style.display = 'block';
+            document.getElementById('lblTotal').innerText = estadoActualClase.length;
+            
+            // Mostrar desglose
+            document.getElementById('statsDashboard').style.display = 'flex';
+            let p = 0, f = 0, r = 0, e = 0;
+            estadoActualClase.forEach(s => {
+                if(s.status === 'Presente') p++;
+                if(s.status === 'Falla') f++;
+                if(s.status === 'Retardo') r++;
+                if(s.status === 'Evasion') e++;
+            });
+            document.getElementById('cPre').innerText = p; document.getElementById('cFal').innerText = f;
+            document.getElementById('cRet').innerText = r; document.getElementById('cEva').innerText = e;
+        }
+
+        function guardarClaseLocal() {
+            const selectedGroup = document.getElementById('groupSelector').value;
+            const selectedDate = document.getElementById('datePicker').value;
+
+            if (!selectedGroup) return alert("Selecciona un grupo antes de guardar.");
+
+            estadoActualClase.forEach(student => {
+                outbox.push({ fecha: selectedDate, grupo: selectedGroup, id: student.id, nombre: student.name, estado: student.status });
+            });
+
+            localStorage.setItem('acacia_outbox', JSON.stringify(outbox));
+            actualizarContadorPendientes();
+            alert(`✅ Asistencia guardada localmente.\nUsa "2. Sincronizar" luego.`);
+            document.getElementById('groupSelector').value = "";
+            estadoActualClase = [];
+            renderActiveView();
+        }
+
+        // --- VISTA 2: ESTADÍSTICAS HISTÓRICAS ---
+        function renderEstadisticas() {
+            const container = document.getElementById('statsContainer');
+            const selectedGroup = document.getElementById('groupSelector').value;
+
+            if (!selectedGroup) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Selecciona un grupo para ver estadísticas.</div>';
+            if (historial.length === 0) return container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No hay historial descargado.</div>';
+
+            const groupStudents = db.filter(s => s.group && s.group.toString().trim() === selectedGroup);
+            const groupHistory = historial.filter(h => h.grupo && h.grupo.toString().trim() === selectedGroup);
+
+            let statsMap = {};
+            groupStudents.forEach(s => {
+                statsMap[s.id] = { nombre: s.name, fallas: 0, retardos: 0, evasiones: 0 };
+            });
+
+            groupHistory.forEach(record => {
+                if(statsMap[record.id]) {
+                    if(record.estado === 'Falla') statsMap[record.id].fallas++;
+                    if(record.estado === 'Retardo') statsMap[record.id].retardos++;
+                    if(record.estado === 'Evasion') statsMap[record.id].evasiones++;
+                }
+            });
+
+            let statsArray = Object.values(statsMap);
+            statsArray.sort((a, b) => {
+                if (b.evasiones !== a.evasiones) return b.evasiones - a.evasiones;
+                return b.fallas - a.fallas;
+            });
+
+            container.innerHTML = '';
+            statsArray.forEach(st => {
+                if (st.fallas === 0 && st.retardos === 0 && st.evasiones === 0) return;
+                let isAlert = (st.fallas >= 3 || st.evasiones >= 1);
+                
+                container.innerHTML += `
+                    <div class="stat-card ${isAlert ? 'alert-red' : ''}">
+                        <div class="stat-name">${st.nombre}</div>
+                        <div class="stat-numbers">
+                            <span style="color:#721c24;">🔴 Fallas: <b>${st.fallas}</b></span>
+                            <span style="color:#856404;">🟠 Retardos: <b>${st.retardos}</b></span>
+                            <span style="color:#5a32a3;">🟣 Evasiones: <b>${st.evasiones}</b></span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (container.innerHTML === '') {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#155724; font-weight:bold;">🟢 Excelente: Nadie en este grupo tiene faltas registradas.</div>';
+            }
+        }
+
+        // --- CONEXIÓN A LA NUBE ---
+        function actualizarContadorPendientes() {
+            const badge = document.getElementById('pendingCount');
+            if (outbox.length > 0) { badge.innerText = outbox.length; badge.style.display = 'inline-block'; } 
+            else { badge.style.display = 'none'; }
+        }
+
+        async function descargarDatos() {
+            try {
+                const btn = document.querySelector('button[onclick="descargarDatos()"]');
+                btn.innerText = "Descargando...";
+                
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                
+                if (data.estudiantes) {
+                    db = data.estudiantes;
+                    historial = data.historial;
+                    localStorage.setItem('acacia_estudiantes', JSON.stringify(db));
+                    localStorage.setItem('acacia_historial', JSON.stringify(historial));
+                    alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.`);
+                    cargarGrupos(); 
+                    renderActiveView();
+                }
+                btn.innerText = "1. Bajar Listas y Datos 📥";
+            } catch (error) {
+                alert("❌ Error de conexión al descargar.");
+                document.querySelector('button[onclick="descargarDatos()"]').innerText = "1. Bajar Listas y Datos 📥";
+            }
+        }
+
+        function subirAsistencia() {
+            if (outbox.length === 0) return alert("No hay asistencias pendientes para enviar.");
+            const btn = document.getElementById('btnSync');
+            btn.innerText = "Enviando...";
+
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(outbox) })
+            .then(() => {
+                outbox = []; localStorage.removeItem('acacia_outbox'); actualizarContadorPendientes();
+                btn.innerHTML = '2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes" style="display:none;">0</span>';
+                setTimeout(() => alert("✅ ¡Sincronización enviada con éxito!"), 100);
+            }).catch(error => {
+                btn.innerHTML = '2. Sincronizar 📤 <span id="pendingCount" class="badge-pendientes">' + outbox.length + '</span>';
+                alert("❌ Error de red.");
+            });
+        }
+    </script>
+</body>
+</html>
