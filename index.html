@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v2.0.1 (Fase 1B · Integridad)       ║
+  ║  ASISTENCIA ACACIA II · Frontend v2.2.0 (Fase 2B · Seguridad)        ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V2.0.1_20260916                        ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V2.2_20260916                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -20,17 +20,17 @@
             //    Si se "Actualiza versión" (lápiz ✏️) la URL NO cambia y no hay que tocar esto.
             SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzX1LKZdloBfcF4fzH_wAgjPRWDqbjSbYK4dourJGx1kvVMWU5Zkw3b9UUFixdQ4TyHfQ/exec',
 
-            // 2) PIN de acceso de docentes (4 dígitos).
-            //    ⚠️ Es visible en GitHub: evita que estudiantes manipulen el celular, NO protege los datos (Fase 2).
+            // 2) PIN de bloqueo de pantalla (4 dígitos). Evita que un estudiante use el celular del docente.
+            //    Los DATOS los protege el código personal de cada docente, que NO está en este archivo.
             PIN_ACCESO: '2026',
 
             // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
-            VERSION_API_REQUERIDA: '2.0.0',
+            VERSION_API_REQUERIDA: '2.2.0',
 
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '2.0.1'
+            VERSION_APP: '2.2.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -53,8 +53,16 @@
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 
         /* Login */
-        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--acacia-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.3s; }
+        #loginScreen, #activacionScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--acacia-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white; transition: opacity 0.3s; }
         .pin-input { font-size: 24px; padding: 15px; width: 150px; text-align: center; letter-spacing: 10px; border-radius: 10px; border: none; margin: 20px 0; }
+        #activacionScreen { display: none; padding: 20px; box-sizing: border-box; text-align: center; }
+        .codigo-input { font-size: 18px; padding: 14px; width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; letter-spacing: 1px; border-radius: 10px; border: none; margin: 16px 0; text-transform: uppercase; font-family: monospace; }
+        .activacion-ayuda { font-size: 14px; line-height: 1.5; max-width: 330px; color: rgba(255,255,255,0.85); }
+        .activacion-msg { min-height: 20px; margin-top: 12px; font-size: 14px; max-width: 330px; color: #ffb8b8; }
+        .btn-secundario { background: none; border: 1px solid rgba(255,255,255,0.6); color: white; padding: 8px 18px; border-radius: 20px; margin-top: 14px; cursor: pointer; }
+        .btn-login:disabled { opacity: 0.6; cursor: wait; }
+        .lbl-docente { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .btn-cambiar-codigo { display: block; margin: 0 auto 20px; background: none; border: 1px solid #aaa; color: #666; padding: 8px 14px; border-radius: 16px; font-size: 13px; cursor: pointer; }
         .btn-login { background-color: #28a745; color: white; padding: 12px 30px; font-size: 18px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
         .login-footer { margin-top: auto; padding-bottom: 30px; font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
 
@@ -112,9 +120,22 @@
         <div class="login-footer">App elaborada por ELIOT MANRIQUE</div>
     </div>
 
+    <div id="activacionScreen">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%;">
+            <h2>Activar la app</h2>
+            <p class="activacion-ayuda">Escriba el código personal que le envió coordinación. Solo se hace una vez y necesita internet.</p>
+            <input type="text" id="codigoInput" class="codigo-input" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="29" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <button class="btn-login" id="btnActivar" onclick="activar()">Activar</button>
+            <p id="activacionMsg" class="activacion-msg"></p>
+            <button class="btn-secundario" id="btnVolverApp" style="display:none;" onclick="volverSinCambiar()">Volver sin cambiar</button>
+        </div>
+        <div class="login-footer">App elaborada por ELIOT MANRIQUE</div>
+    </div>
+
     <div id="appContent">
         <header>
             <div style="font-size: 18px; font-weight: bold;">Acacia II - Asistencia</div>
+            <div class="lbl-docente" id="lblDocente"></div>
             <div class="header-controls">
                 <input type="date" id="datePicker">
                 <select id="groupSelector" onchange="alCambiarGrupo()">
@@ -148,6 +169,7 @@
             </div>
             <div id="statsContainer"></div>
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
+            <button class="btn-cambiar-codigo" onclick="cambiarCodigo()">🔑 Cambiar código de docente</button>
         </div>
 
         <div class="bottom-dock">
@@ -166,15 +188,14 @@
 
     /* ════════════════════════════════════════════════════════════════════
      *  1. ALMACENAMIENTO LOCAL SEGURO
-     *     - Un dato corrupto ya no bloquea la app (antes: pantalla muerta).
-     *     - Memoria llena se reporta como tal (antes: "error de conexión").
      * ══════════════════════════════════════════════════════════════════ */
     const CLAVES = Object.freeze({
         ESTUDIANTES: 'acacia_estudiantes',
         HISTORIAL: 'acacia_historial',
-        OUTBOX_V1: 'acacia_outbox',        // formato anterior (se migra una sola vez)
         OUTBOX: 'acacia_outbox_v2',
-        CUARENTENA: 'acacia_rechazadas'    // clases que el servidor rechazó: no se pierden
+        CUARENTENA: 'acacia_rechazadas',
+        CODIGO: 'acacia_codigo',
+        DOCENTE: 'acacia_docente'
     });
     const ESTADOS = ['Presente', 'Falla', 'Retardo', 'Evasion'];
 
@@ -184,7 +205,6 @@
         try {
             return JSON.parse(crudo);
         } catch (err) {
-            // Se conserva una copia del dato dañado antes de reemplazarlo
             try { localStorage.setItem(clave + '_corrupto_' + Date.now(), crudo); } catch (_) {}
             console.warn('Dato local dañado en', clave, err);
             return porDefecto;
@@ -204,14 +224,11 @@
     /* ════════════════════════════════════════════════════════════════════
      *  2. UTILIDADES
      * ══════════════════════════════════════════════════════════════════ */
-
-    // Fecha LOCAL del celular (antes: UTC → después de las 19:00 marcaba el día siguiente)
     function fechaLocalISO(d = new Date()) {
         const dos = n => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
     }
 
-    // Identificador único por clase. Respaldo para navegadores antiguos sin randomUUID.
     function nuevoSessionId() {
         if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
         const bytes = new Uint8Array(16);
@@ -220,6 +237,12 @@
     }
 
     const aTexto = v => (v === null || v === undefined) ? '' : String(v).trim();
+
+    // Acepta minúsculas, espacios o guiones; devuelve XXXX-XXXX-XXXX-XXXX-XXXX o '' si no tiene 20 caracteres
+    function normalizarCodigo(texto) {
+        const limpio = aTexto(texto).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return limpio.length === 20 ? limpio.match(/.{4}/g).join('-') : '';
+    }
 
     function versionCompatible(actual, requerida) {
         const a = aTexto(actual).split('.').map(Number), r = requerida.split('.').map(Number);
@@ -232,73 +255,164 @@
     let db = leerLS(CLAVES.ESTUDIANTES, []);
     let historial = leerLS(CLAVES.HISTORIAL, []);
     let outbox = leerLS(CLAVES.OUTBOX, []);
+    let codigo = leerLS(CLAVES.CODIGO, '');
+    let docente = leerLS(CLAVES.DOCENTE, null);
     let estadoActualClase = [];
     let grupoActual = '';
     let currentTab = 'Asistencia';
     let sincronizando = false;
+    let appIniciada = false;
 
-    /**
-     * Migración del outbox v1 (registros sueltos) a v2 (clases con session_id).
-     * Corta una clase cuando cambia fecha/grupo o cuando un estudiante se repite,
-     * así dos clases del mismo grupo guardadas seguidas NO se fusionan.
-     */
-    function migrarOutboxV1() {
-        const viejo = leerLS(CLAVES.OUTBOX_V1, null);
-        if (!Array.isArray(viejo) || viejo.length === 0) {
-            localStorage.removeItem(CLAVES.OUTBOX_V1);
-            return;
-        }
-        const sesiones = [];
-        let actual = null, idsVistos = new Set();
-        viejo.forEach(r => {
-            const fecha = aTexto(r.fecha), grupo = aTexto(r.grupo), id = aTexto(r.id);
-            if (!actual || actual.fecha !== fecha || actual.grupo !== grupo || idsVistos.has(id)) {
-                actual = { session_id: nuevoSessionId(), fecha, grupo, creado_en: new Date().toISOString(), migrada: true, registros: [] };
-                sesiones.push(actual);
-                idsVistos = new Set();
-            }
-            idsVistos.add(id);
-            actual.registros.push({ id, nombre: aTexto(r.nombre), estado: aTexto(r.estado) });
-        });
-        const nuevo = outbox.concat(sesiones);
-        if (guardarLS(CLAVES.OUTBOX, nuevo)) {   // solo se borra lo viejo si lo nuevo quedó guardado
-            outbox = nuevo;
-            localStorage.removeItem(CLAVES.OUTBOX_V1);
-        }
-    }
+    // Enlace de activación: https://.../#codigo=XXXX-... (el fragmento # nunca viaja a GitHub)
+    let codigoDesdeEnlace = '';
+    (function leerEnlaceActivacion() {
+        const m = /codigo=([A-Za-z0-9-]+)/.exec(location.hash || '');
+        if (!m) return;
+        codigoDesdeEnlace = normalizarCodigo(decodeURIComponent(m[1]));
+        history.replaceState(null, '', location.pathname + location.search);   // borra el código de la barra
+    })();
 
     /* ════════════════════════════════════════════════════════════════════
-     *  4. ACCESO E INICIO
+     *  4. ACCESO: PIN → ACTIVACIÓN → APP
      * ══════════════════════════════════════════════════════════════════ */
     function verificarPIN() {
         const pin = document.getElementById('pinInput').value;
-        if (pin === CONFIG.PIN_ACCESO) {
-            document.getElementById('loginScreen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContent').style.display = 'flex';
-                iniciarApp();
-            }, 300);
-        } else {
+        if (pin !== CONFIG.PIN_ACCESO) {
             document.getElementById('pinError').style.display = 'block';
             document.getElementById('pinInput').value = '';
+            return;
         }
+        document.getElementById('loginScreen').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('loginScreen').style.display = 'none';
+            const enlaceDistinto = codigoDesdeEnlace && codigoDesdeEnlace !== codigo;
+            if (!codigo || !docente || enlaceDistinto) mostrarActivacion('');
+            else mostrarApp();
+        }, 300);
     }
     document.getElementById('pinInput').addEventListener('keypress', e => { if (e.key === 'Enter') verificarPIN(); });
+    document.getElementById('codigoInput').addEventListener('keypress', e => { if (e.key === 'Enter') activar(); });
+
+    function mostrarActivacion(mensaje) {
+        document.getElementById('appContent').style.display = 'none';
+        document.getElementById('activacionScreen').style.display = 'flex';
+        document.getElementById('activacionMsg').textContent = mensaje || '';
+        document.getElementById('btnVolverApp').style.display = (codigo && docente) ? 'inline-block' : 'none';
+        const input = document.getElementById('codigoInput');
+        input.value = codigoDesdeEnlace || '';
+        if (codigoDesdeEnlace) activar();                       // enlace: activación de un toque
+        else input.focus();
+    }
+
+    function mostrarApp() {
+        document.getElementById('activacionScreen').style.display = 'none';
+        document.getElementById('appContent').style.display = 'flex';
+        iniciarApp();
+    }
+
+    function volverSinCambiar() {
+        codigoDesdeEnlace = '';
+        mostrarApp();
+    }
+
+    function cambiarCodigo() {
+        if (hayMarcasSinGuardar() && !confirm('Tiene marcas sin guardar. ¿Descartarlas y cambiar de código?')) return;
+        mostrarActivacion('El código actual sigue funcionando hasta que active uno nuevo.');
+    }
+
+    async function activar() {
+        const input = document.getElementById('codigoInput');
+        const msg = document.getElementById('activacionMsg');
+        const btn = document.getElementById('btnActivar');
+        const nuevoCodigo = normalizarCodigo(input.value);
+        codigoDesdeEnlace = '';
+
+        if (!nuevoCodigo) { msg.textContent = 'El código tiene 20 letras y números. Revíselo e intente de nuevo.'; return; }
+        if (btn.disabled) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Verificando...';
+        msg.textContent = '';
+        try {
+            const data = await llamarAPI({ accion: 'leer', codigo: nuevoCodigo });
+            if (!data.ok) {
+                throw new Error(data.codigo === 'NO_AUTORIZADO'
+                    ? 'Código inválido o revocado. Revíselo o pida uno nuevo a coordinación.'
+                    : (data.error || 'El servidor no respondió correctamente.'));
+            }
+            if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
+
+            if (!guardarLS(CLAVES.CODIGO, nuevoCodigo)) throw new Error('La memoria del celular está llena. Libere espacio e intente de nuevo.');
+            const esPrimeraActivacion = !docente;
+            codigo = nuevoCodigo;
+            const aviso = aplicarDatosServidor(data);
+
+            // Clases guardadas antes de cualquier activación pertenecen a quien activa por primera vez
+            if (esPrimeraActivacion && outbox.some(s => !s.docente_id)) {
+                outbox.forEach(s => { if (!s.docente_id) s.docente_id = docente.id; });
+                guardarLS(CLAVES.OUTBOX, outbox);
+            }
+
+            estadoActualClase = [];
+            grupoActual = '';
+            input.value = '';
+            mostrarApp();
+            alert(`✅ App activada para ${docente.nombre}.${resumenReemplazos()}${aviso}`);
+        } catch (err) {
+            msg.textContent = explicarError(err);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Activar';
+        }
+    }
 
     function iniciarApp() {
         document.querySelectorAll('.lblVersion').forEach(el => el.textContent = CONFIG.VERSION_APP);
-        document.getElementById('datePicker').value = fechaLocalISO();
-        // Pide al navegador no borrar los datos locales (clave en iPhone)
-        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-        migrarOutboxV1();
+        document.getElementById('lblDocente').textContent = docente ? docente.nombre : '';
+        if (!appIniciada) {
+            document.getElementById('datePicker').value = fechaLocalISO();
+            if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+            appIniciada = true;
+        }
         actualizarContadorPendientes();
         cargarGrupos();
         renderActiveView();
     }
 
     /* ════════════════════════════════════════════════════════════════════
-     *  5. NAVEGACIÓN
+     *  5. PERMISOS VISIBLES (el servidor es quien decide; esto solo informa)
+     * ══════════════════════════════════════════════════════════════════ */
+    function esGrupoPropio(grupo) {
+        return !!docente && Array.isArray(docente.grupos) && (docente.grupos.includes('*') || docente.grupos.includes(grupo));
+    }
+
+    function reemplazoDe(grupo) {
+        if (!docente || esGrupoPropio(grupo)) return null;
+        return (docente.reemplazos || []).find(r => r.grupo === grupo) || null;
+    }
+
+    function resumenReemplazos() {
+        const lista = (docente && docente.reemplazos) || [];
+        return lista.length ? '\n\nReemplazos vigentes:\n' + lista.map(r => `• ${r.grupo} (hasta ${r.hasta})`).join('\n') : '';
+    }
+
+    function aplicarDatosServidor(data) {
+        db = data.estudiantes;
+        historial = Array.isArray(data.historial) ? data.historial : [];
+        docente = data.docente;
+        guardarLS(CLAVES.DOCENTE, docente);
+        if (!guardarLS(CLAVES.ESTUDIANTES, db)) {
+            return '\n\n⚠️ Memoria llena: las listas funcionarán solo mientras la app esté abierta.';
+        }
+        if (!guardarLS(CLAVES.HISTORIAL, historial)) {
+            localStorage.removeItem(CLAVES.HISTORIAL);
+            return '\n\n⚠️ Memoria llena: las estadísticas no quedarán guardadas sin internet.';
+        }
+        return '';
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+     *  6. NAVEGACIÓN
      * ══════════════════════════════════════════════════════════════════ */
     function cambiarPestana(tabName) {
         currentTab = tabName;
@@ -319,7 +433,6 @@
         return estadoActualClase.some(s => s.status !== 'Presente');
     }
 
-    // Evita perder lo marcado si el docente cambia de grupo por error
     function alCambiarGrupo() {
         const selector = document.getElementById('groupSelector');
         if (hayMarcasSinGuardar() && selector.value !== grupoActual) {
@@ -337,13 +450,16 @@
         const selector = document.getElementById('groupSelector');
         selector.innerHTML = '<option value="">Selecciona un grupo...</option>';
         const grupos = [...new Set(db.map(s => aTexto(s.group)))].filter(g => g !== '').sort();
-        grupos.forEach(grupo => selector.appendChild(new Option(grupo, grupo)));
+        grupos.forEach(grupo => {
+            const r = reemplazoDe(grupo);
+            selector.appendChild(new Option(r ? `${grupo} (reemplazo)` : grupo, grupo));
+        });
         selector.value = grupos.includes(grupoActual) ? grupoActual : '';
         grupoActual = selector.value;
     }
 
     /* ════════════════════════════════════════════════════════════════════
-     *  6. TOMA DE ASISTENCIA
+     *  7. TOMA DE ASISTENCIA
      * ══════════════════════════════════════════════════════════════════ */
     function mostrarMensaje(contenedor, texto, color) {
         const div = document.createElement('div');
@@ -368,12 +484,12 @@
                                   .map(s => ({ id: aTexto(s.id), name: aTexto(s.name), group: grupo, status: 'Presente' }));
         }
 
-        const fragmento = document.createDocumentFragment();   // un solo repintado
+        const fragmento = document.createDocumentFragment();
         estadoActualClase.forEach((student, index) => {
             const card = document.createElement('div');
             card.className = `student-card estado-${student.status}`;
             const nombre = document.createElement('span');
-            nombre.textContent = student.name;                   // textContent: sin inyección de HTML
+            nombre.textContent = student.name;
             const badge = document.createElement('span');
             badge.className = 'status-badge';
             badge.textContent = student.status;
@@ -415,11 +531,16 @@
         const grupo = grupoActual;
         const fecha = document.getElementById('datePicker').value;
 
+        if (!docente) return mostrarActivacion('Active su código antes de tomar lista.');
         if (!grupo) return alert('Selecciona un grupo antes de guardar.');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert('Selecciona la fecha de la clase antes de guardar.');
         if (estadoActualClase.length === 0) return alert('El grupo no tiene estudiantes cargados.');
         if (fecha > fechaLocalISO()) {
             if (!confirm(`La fecha ${fecha} es posterior a hoy.\n¿Guardar de todas formas?`)) return;
+        }
+        const r = reemplazoDe(grupo);
+        if (r && fecha > r.hasta) {
+            if (!confirm(`Su reemplazo en ${grupo} termina el ${r.hasta}.\nEl servidor rechazará clases con fecha ${fecha}. ¿Guardar de todas formas?`)) return;
         }
         if (existeListaPrevia(fecha, grupo)) {
             if (!confirm(`Ya hay una lista del grupo ${grupo} para el ${fecha}.\n\n` +
@@ -429,6 +550,7 @@
 
         const sesion = {
             session_id: nuevoSessionId(),
+            docente_id: docente.id,                 // en celulares compartidos, cada docente envía solo lo suyo
             fecha: fecha,
             grupo: grupo,
             creado_en: new Date().toISOString(),
@@ -451,13 +573,14 @@
     }
 
     /* ════════════════════════════════════════════════════════════════════
-     *  7. ESTADÍSTICAS
+     *  8. ESTADÍSTICAS
      * ══════════════════════════════════════════════════════════════════ */
     function renderEstadisticas() {
         const container = document.getElementById('statsContainer');
         const grupo = grupoActual;
 
         if (!grupo) return mostrarMensaje(container, 'Selecciona un grupo para ver estadísticas.');
+        if (reemplazoDe(grupo)) return mostrarMensaje(container, 'Grupo en reemplazo: el historial solo lo ven el docente titular y coordinación.');
         if (historial.length === 0) return mostrarMensaje(container, 'No hay historial descargado.');
 
         const statsMap = {};
@@ -504,30 +627,32 @@
     }
 
     /* ════════════════════════════════════════════════════════════════════
-     *  8. SINCRONIZACIÓN CON EL SERVIDOR
+     *  9. SINCRONIZACIÓN
      * ══════════════════════════════════════════════════════════════════ */
+    const esPropia = s => !!docente && (!s.docente_id || s.docente_id === docente.id);
+
     function actualizarContadorPendientes() {
         const badge = document.getElementById('pendingCount');
         if (!badge) return;
-        badge.textContent = outbox.length;                     // cuenta CLASES pendientes
-        badge.style.display = outbox.length > 0 ? 'inline-block' : 'none';
+        const n = outbox.filter(esPropia).length;
+        badge.textContent = n;
+        badge.style.display = n > 0 ? 'inline-block' : 'none';
     }
 
     function textoBotonSync(texto) {
-        const btn = document.getElementById('btnSync');
-        btn.firstChild.nodeValue = texto;                       // conserva el badge
+        document.getElementById('btnSync').firstChild.nodeValue = texto;
     }
 
-    // text/plain evita la verificación CORS previa y SÍ permite leer la respuesta
-    async function llamarAPI(metodo, cuerpo) {
-        const opciones = { method: metodo, redirect: 'follow' };
-        if (cuerpo !== undefined) {
-            opciones.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-            opciones.body = JSON.stringify(cuerpo);
-        }
+    // Todo viaja por POST con text/plain: sin verificación CORS previa y el código nunca queda en una URL
+    async function llamarAPI(cuerpo) {
         let resp;
         try {
-            resp = await fetch(CONFIG.SCRIPT_URL, opciones);
+            resp = await fetch(CONFIG.SCRIPT_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(cuerpo)
+            });
         } catch (_) {
             throw new Error('SIN_RED');
         }
@@ -535,7 +660,7 @@
         try {
             return JSON.parse(texto);
         } catch (_) {
-            throw new Error('RESPUESTA_INVALIDA');                // p. ej. página de error de Google
+            throw new Error('RESPUESTA_INVALIDA');
         }
     }
 
@@ -543,37 +668,33 @@
         switch (err.message) {
             case 'SIN_RED': return 'No hay conexión a internet. Los datos siguen guardados en el celular.';
             case 'RESPUESTA_INVALIDA': return 'El servidor respondió con un error. Avise a coordinación. Los datos siguen guardados en el celular.';
-            case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación. Los datos siguen guardados en el celular.';
-            default: return err.message + '\nLos datos siguen guardados en el celular.';
+            case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación.';
+            case 'CODIGO_REVOCADO': return 'Su código fue revocado o cambiado. Las clases pendientes siguen guardadas: active el código nuevo para enviarlas.';
+            default: return err.message;
         }
     }
 
     async function descargarDatos() {
+        if (!codigo) return mostrarActivacion('');
         const btn = document.getElementById('btnDescargar');
         btn.disabled = true;
         btn.textContent = 'Descargando...';
+        let revocado = false;
         try {
-            const data = await llamarAPI('GET');
-            if (data.ok === false) throw new Error(data.error || 'Error del servidor al leer datos.');
+            const data = await llamarAPI({ accion: 'leer', codigo });
+            if (data.codigo === 'NO_AUTORIZADO') { revocado = true; throw new Error('CODIGO_REVOCADO'); }
+            if (!data.ok) throw new Error(data.error || 'Error del servidor al leer datos.');
             if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
             if (!Array.isArray(data.estudiantes)) throw new Error('RESPUESTA_INVALIDA');
 
-            db = data.estudiantes;
-            historial = Array.isArray(data.historial) ? data.historial : [];
-
-            let aviso = '';
-            if (!guardarLS(CLAVES.ESTUDIANTES, db)) {
-                aviso = '\n\n⚠️ Memoria llena: las listas funcionarán solo mientras la app esté abierta.';
-            } else if (!guardarLS(CLAVES.HISTORIAL, historial)) {
-                localStorage.removeItem(CLAVES.HISTORIAL);       // libera espacio para las clases pendientes
-                aviso = '\n\n⚠️ Memoria llena: las estadísticas no quedarán guardadas sin internet.';
-            }
-
-            alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.${aviso}`);
+            const aviso = aplicarDatosServidor(data);
+            document.getElementById('lblDocente').textContent = docente.nombre;
+            alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${historial.length} registros históricos.${resumenReemplazos()}${aviso}`);
             cargarGrupos();
             renderActiveView();
         } catch (err) {
-            alert('❌ No se pudieron descargar los datos.\n' + explicarError(err));
+            if (revocado) mostrarActivacion(explicarError(err));
+            else alert('❌ No se pudieron descargar los datos.\n' + explicarError(err));
         } finally {
             btn.disabled = false;
             btn.textContent = '1. Bajar Listas y Datos 📥';
@@ -581,8 +702,16 @@
     }
 
     async function subirAsistencia() {
-        if (sincronizando) return;                              // bloquea doble toque
-        if (outbox.length === 0) return alert('No hay clases pendientes por enviar.');
+        if (sincronizando) return;
+        if (!codigo || !docente) return mostrarActivacion('');
+
+        const propias = outbox.filter(esPropia);
+        const ajenas = outbox.length - propias.length;
+        if (propias.length === 0) {
+            return alert(ajenas > 0
+                ? `No tiene clases pendientes. Hay ${ajenas} clase(s) de otro docente en este celular: solo ese docente puede enviarlas activando su código aquí.`
+                : 'No hay clases pendientes por enviar.');
+        }
 
         sincronizando = true;
         const btn = document.getElementById('btnSync');
@@ -594,14 +723,17 @@
 
         try {
             const lotes = [];
-            for (let i = 0; i < outbox.length; i += CONFIG.SESIONES_POR_ENVIO) {
-                lotes.push(outbox.slice(i, i + CONFIG.SESIONES_POR_ENVIO));
+            for (let i = 0; i < propias.length; i += CONFIG.SESIONES_POR_ENVIO) {
+                lotes.push(propias.slice(i, i + CONFIG.SESIONES_POR_ENVIO));
             }
 
             for (let n = 0; n < lotes.length; n++) {
                 textoBotonSync(`Enviando ${n + 1}/${lotes.length}... `);
-                const data = await llamarAPI('POST', { version: 2, sesiones: lotes[n] });
+                // docente_id es solo local: el servidor identifica al docente por su código
+                const sesiones = lotes[n].map(({ docente_id, creado_en, ...resto }) => resto);
+                const data = await llamarAPI({ accion: 'escribir', codigo, version: 2, sesiones });
 
+                if (data.codigo === 'NO_AUTORIZADO') throw new Error('CODIGO_REVOCADO');
                 if (!data.ok) {
                     throw new Error(data.codigo === 'SERVIDOR_OCUPADO'
                         ? 'Otro docente está sincronizando en este momento. Intente de nuevo en un minuto.'
@@ -609,7 +741,6 @@
                 }
                 if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
 
-                // Solo sale del celular lo que el servidor CONFIRMÓ o RECHAZÓ explícitamente
                 const idsOk = new Set(data.sesiones_confirmadas || []);
                 const motivos = new Map((data.sesiones_rechazadas || []).map(r => [r.session_id, r.motivo]));
 
@@ -645,8 +776,11 @@
             : '';
         if (rechazadas.length > 0) mensaje += `\n\n⚠️ ${rechazadas.length} clase(s) rechazada(s) y apartada(s):\n` + rechazadas.join('\n');
         if (errorFinal) mensaje += (mensaje ? '\n\n' : '') + '❌ ' + explicarError(errorFinal);
-        if (outbox.length > 0) mensaje += `\n\nQuedan ${outbox.length} clase(s) pendiente(s) en el celular.`;
-        alert(mensaje);
+        const pendientes = outbox.filter(esPropia).length;
+        if (pendientes > 0) mensaje += `\n\nQuedan ${pendientes} clase(s) pendiente(s) en el celular.`;
+
+        if (errorFinal && errorFinal.message === 'CODIGO_REVOCADO') mostrarActivacion(mensaje);
+        else alert(mensaje);
     }
     </script>
 </body>
