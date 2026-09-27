@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v2.3.0 (Fase 3A · Escalabilidad)    ║
+  ║  ASISTENCIA ACACIA II · Frontend v3.0.0 (Fase 4 · Asignaturas)       ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V2.3_20260917                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V3.0_20260926                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -25,12 +25,12 @@
             PIN_ACCESO: '2026',
 
             // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
-            VERSION_API_REQUERIDA: '2.3.0',
+            VERSION_API_REQUERIDA: '3.0.0',
 
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '2.3.0'
+            VERSION_APP: '3.0.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -68,8 +68,10 @@
 
         #appContent { display: none; flex-direction: column; height: 100%; min-height: 0; }
         header { flex-shrink: 0; background-color: var(--acacia-blue); color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
-        .header-controls { display: flex; justify-content: space-between; margin-top: 10px; gap: 10px; }
-        select, input[type="date"] { padding: 8px; border-radius: 5px; border: none; font-size: 14px; flex: 1; }
+        .header-controls { display: flex; justify-content: space-between; margin-top: 8px; gap: 10px; flex-wrap: wrap; }
+        .stat-alerta { font-size: 12px; font-weight: bold; margin-top: 6px; }
+        .stat-numbers { flex-wrap: wrap; }
+        select, input[type="date"] { padding: 8px; border-radius: 5px; border: none; font-size: 14px; flex: 1 1 140px; min-width: 0; max-width: 100%; box-sizing: border-box; }
 
         .cloud-controls { flex-shrink: 0; display: flex; justify-content: space-between; background: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; font-size: 13px; }
         .sync-btn { background: none; border: 1px solid #007bff; color: #007bff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -108,6 +110,8 @@
         .btn-reintentar { background: #007bff; color: white; border: none; }
         .btn-descartar { background: white; color: #dc3545; border: 1px solid #dc3545; }
         .btn-panel { display: block; width: 100%; margin-bottom: 10px; background: white; border: 1px solid #2c3e50; color: #2c3e50; }
+        .diag-caja { background: white; border-left: 5px solid #6c757d; border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 13px; }
+        .diag-texto { width: 100%; height: 130px; font-family: monospace; font-size: 11px; margin-top: 8px; box-sizing: border-box; }
         .nav-active { color: var(--acacia-blue); border-bottom: 3px solid var(--acacia-blue); }
 
         .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
@@ -147,7 +151,12 @@
             <div class="header-controls">
                 <input type="date" id="datePicker">
                 <select id="groupSelector" onchange="alCambiarGrupo()">
-                    <option value="">Selecciona un grupo...</option>
+                    <option value="">Grupo...</option>
+                </select>
+            </div>
+            <div class="header-controls">
+                <select id="asignaturaSelector" onchange="alCambiarAsignatura()">
+                    <option value="">Asignatura...</option>
                 </select>
             </div>
         </header>
@@ -174,7 +183,7 @@
         <!-- VISTA 2: ESTADÍSTICAS HISTÓRICAS -->
         <div id="viewEstadisticas" class="view-container">
             <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: center;">
-                Acumulado del grupo según las clases ya sincronizadas. Pulsa "1. Bajar Listas y Datos" para actualizar.
+                Acumulado de la asignatura elegida, según las clases ya sincronizadas. Los porcentajes son los del Art. 7.3.3 del Manual.
             </div>
             <div id="statsContainer"></div>
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
@@ -183,10 +192,11 @@
 
         <!-- VISTA 3: CLASES APARTADAS POR EL SERVIDOR -->
         <div id="viewApartadas" class="view-container">
-            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404;">
+            <div id="introApartadas" style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404;">
                 El servidor no aceptó estas clases. Siguen guardadas en el celular. Si coordinación ya corrigió el problema (por ejemplo, registró su reemplazo), pulse <b>Reintentar</b>.
             </div>
             <div id="apartadasContainer"></div>
+            <div id="diagnosticoContainer"></div>
             <button class="btn-panel" onclick="cambiarPestana('Asistencia')">⬅️ Volver a Tomar Lista</button>
         </div>
 
@@ -210,9 +220,11 @@
     const CLAVES = Object.freeze({
         ESTUDIANTES: 'acacia_estudiantes',
         RESUMEN: 'acacia_resumen',
+        PROGRAMACION: 'acacia_programacion',
         SESIONES: 'acacia_sesiones_recientes',
         OUTBOX: 'acacia_outbox_v2',
         CUARENTENA: 'acacia_rechazadas',
+        DIAGNOSTICO: 'acacia_diagnostico',
         CODIGO: 'acacia_codigo',
         DOCENTE: 'acacia_docente'
     });
@@ -274,6 +286,9 @@
     let db = leerLS(CLAVES.ESTUDIANTES, []);
     localStorage.removeItem('acacia_historial');            // v2.2 o anterior: libera espacio
     let resumen = leerLS(CLAVES.RESUMEN, []);
+    let programacion = leerLS(CLAVES.PROGRAMACION, []);
+    let asignaturaActual = '';
+    let umbrales = { injustificada: 0.20, justificada: 0.30, consecutivas: 3 };
     let sesionesRecientes = leerLS(CLAVES.SESIONES, []);
     let outbox = leerLS(CLAVES.OUTBOX, []);
     let codigo = leerLS(CLAVES.CODIGO, '');
@@ -378,7 +393,9 @@
             grupoActual = '';
             input.value = '';
             mostrarApp();
-            alert(`✅ App activada para ${docente.nombre}.${resumenReemplazos()}${aviso}`);
+            alert(`✅ App activada para ${docente.nombre}.\n` +
+                  `${db.length} estudiantes y ${programacion.length} asignatura(s) a su cargo.` +
+                  `${resumenReemplazos()}${aviso}`);
         } catch (err) {
             msg.textContent = explicarError(err);
         } finally {
@@ -403,13 +420,17 @@
     /* ════════════════════════════════════════════════════════════════════
      *  5. PERMISOS VISIBLES (el servidor es quien decide; esto solo informa)
      * ══════════════════════════════════════════════════════════════════ */
-    function esGrupoPropio(grupo) {
-        return !!docente && Array.isArray(docente.grupos) && (docente.grupos.includes('*') || docente.grupos.includes(grupo));
+    function reemplazoDe(grupo) {
+        if (!docente) return null;
+        return (docente.reemplazos || []).find(r => r.grupo === grupo) || null;
     }
 
-    function reemplazoDe(grupo) {
-        if (!docente || esGrupoPropio(grupo)) return null;
-        return (docente.reemplazos || []).find(r => r.grupo === grupo) || null;
+    /** Asignaturas que este docente puede dictar en ese grupo, según la programación. */
+    function asignaturasDe(grupo) {
+        return programacion.filter(p => aTexto(p.grupo) === grupo)
+                           .map(p => aTexto(p.asignatura))
+                           .filter((v, i, a) => v && a.indexOf(v) === i)
+                           .sort();
     }
 
     function resumenReemplazos() {
@@ -420,12 +441,15 @@
     function aplicarDatosServidor(data) {
         db = data.estudiantes;
         resumen = Array.isArray(data.resumen) ? data.resumen : [];
+        programacion = Array.isArray(data.programacion) ? data.programacion : [];
+        if (data.umbrales) umbrales = data.umbrales;
         sesionesRecientes = Array.isArray(data.sesiones_recientes) ? data.sesiones_recientes : [];
         docente = data.docente;
         guardarLS(CLAVES.DOCENTE, docente);
         if (!guardarLS(CLAVES.ESTUDIANTES, db)) {
             return '\n\n⚠️ Memoria llena: las listas funcionarán solo mientras la app esté abierta.';
         }
+        guardarLS(CLAVES.PROGRAMACION, programacion);
         if (!guardarLS(CLAVES.RESUMEN, resumen) || !guardarLS(CLAVES.SESIONES, sesionesRecientes)) {
             return '\n\n⚠️ Memoria llena: las estadísticas no quedarán guardadas sin internet.';
         }
@@ -449,7 +473,7 @@
         const enAsistencia = currentTab === 'Asistencia';
         document.getElementById('fabSave').style.display = enAsistencia ? 'flex' : 'none';
         actualizarBannerApartadas();
-        if (currentTab === 'Apartadas') renderApartadas();
+        if (currentTab === 'Apartadas') { renderApartadas(); renderDiagnostico(); }
         else if (enAsistencia) renderList();
         else renderEstadisticas();
     }
@@ -461,19 +485,34 @@
     function alCambiarGrupo() {
         const selector = document.getElementById('groupSelector');
         if (hayMarcasSinGuardar() && selector.value !== grupoActual) {
-            if (!confirm(`Tiene marcas sin guardar en el grupo ${grupoActual}.\n¿Descartarlas y cambiar de grupo?`)) {
+            if (!confirm(`Tiene marcas sin guardar en ${grupoActual}.\n¿Descartarlas y cambiar de grupo?`)) {
                 selector.value = grupoActual;
                 return;
             }
         }
         grupoActual = selector.value;
+        asignaturaActual = '';
+        estadoActualClase = [];
+        cargarAsignaturas();
+        renderActiveView();
+    }
+
+    function alCambiarAsignatura() {
+        const selector = document.getElementById('asignaturaSelector');
+        if (hayMarcasSinGuardar() && selector.value !== asignaturaActual) {
+            if (!confirm(`Tiene marcas sin guardar en ${asignaturaActual}.\n¿Descartarlas y cambiar de asignatura?`)) {
+                selector.value = asignaturaActual;
+                return;
+            }
+        }
+        asignaturaActual = selector.value;
         estadoActualClase = [];
         renderActiveView();
     }
 
     function cargarGrupos() {
         const selector = document.getElementById('groupSelector');
-        selector.innerHTML = '<option value="">Selecciona un grupo...</option>';
+        selector.innerHTML = '<option value="">Grupo...</option>';
         const grupos = [...new Set(db.map(s => aTexto(s.group)))].filter(g => g !== '').sort();
         grupos.forEach(grupo => {
             const r = reemplazoDe(grupo);
@@ -481,6 +520,25 @@
         });
         selector.value = grupos.includes(grupoActual) ? grupoActual : '';
         grupoActual = selector.value;
+        cargarAsignaturas();
+    }
+
+    /** Si el grupo tiene una sola asignatura, se elige sola: un toque menos. */
+    function cargarAsignaturas() {
+        const selector = document.getElementById('asignaturaSelector');
+        const lista = grupoActual ? asignaturasDe(grupoActual) : [];
+        selector.innerHTML = '';
+        if (!grupoActual) {
+            selector.appendChild(new Option('Primero elija el grupo...', ''));
+        } else if (lista.length === 0) {
+            selector.appendChild(new Option('Sin asignaturas asignadas', ''));
+        } else {
+            if (lista.length > 1) selector.appendChild(new Option('Asignatura...', ''));
+            lista.forEach(a => selector.appendChild(new Option(a, a)));
+        }
+        if (lista.indexOf(asignaturaActual) === -1) asignaturaActual = lista.length === 1 ? lista[0] : '';
+        selector.value = asignaturaActual;
+        selector.disabled = lista.length <= 1;
     }
 
     /* ════════════════════════════════════════════════════════════════════
@@ -498,10 +556,15 @@
         const container = document.getElementById('listContainer');
         const grupo = grupoActual;
 
-        if (db.length === 0 || !grupo) {
+        if (db.length === 0 || !grupo || !asignaturaActual) {
             document.getElementById('statsDashboard').style.display = 'none';
             document.getElementById('groupTotalBanner').style.display = 'none';
-            return mostrarMensaje(container, db.length === 0 ? 'Sin datos. Pulsa "1. Bajar Listas".' : 'Selecciona un grupo para empezar.');
+            const texto = db.length === 0 ? 'Sin datos. Pulsa "1. Bajar Listas y Datos".'
+                : !grupo ? 'Elija el grupo para empezar.'
+                : asignaturasDe(grupo).length === 0
+                    ? `No tiene asignaturas programadas en ${grupo}. Avise a coordinación.`
+                    : 'Elija la asignatura de esta clase.';
+            return mostrarMensaje(container, texto);
         }
 
         if (estadoActualClase.length === 0 || estadoActualClase[0].group !== grupo) {
@@ -546,9 +609,10 @@
         document.getElementById('cEva').textContent = c.Evasion;
     }
 
-    function existeListaPrevia(fecha, grupo) {
-        const enOutbox = outbox.some(s => s.fecha === fecha && s.grupo === grupo);
-        const enServidor = sesionesRecientes.some(h => aTexto(h.fecha) === fecha && aTexto(h.grupo) === grupo);
+    function existeListaPrevia(fecha, grupo, asignatura) {
+        const enOutbox = outbox.some(s => s.fecha === fecha && s.grupo === grupo && s.asignatura === asignatura);
+        const enServidor = sesionesRecientes.some(h => aTexto(h.fecha) === fecha &&
+            aTexto(h.grupo) === grupo && aTexto(h.asignatura) === asignatura);
         return enOutbox || enServidor;
     }
 
@@ -557,7 +621,8 @@
         const fecha = document.getElementById('datePicker').value;
 
         if (!docente) return mostrarActivacion('Active su código antes de tomar lista.');
-        if (!grupo) return alert('Selecciona un grupo antes de guardar.');
+        if (!grupo) return alert('Elija el grupo antes de guardar.');
+        if (!asignaturaActual) return alert('Elija la asignatura antes de guardar.');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert('Selecciona la fecha de la clase antes de guardar.');
         if (estadoActualClase.length === 0) return alert('El grupo no tiene estudiantes cargados.');
         if (fecha > fechaLocalISO()) {
@@ -567,9 +632,9 @@
         if (r && fecha > r.hasta) {
             if (!confirm(`Su reemplazo en ${grupo} termina el ${r.hasta}.\nEl servidor rechazará clases con fecha ${fecha}. ¿Guardar de todas formas?`)) return;
         }
-        if (existeListaPrevia(fecha, grupo)) {
-            if (!confirm(`Ya hay una lista del grupo ${grupo} para el ${fecha}.\n\n` +
-                         `Pulse ACEPTAR solo si es OTRA clase (otra asignatura u otro bloque).\n` +
+        if (existeListaPrevia(fecha, grupo, asignaturaActual)) {
+            if (!confirm(`Ya hay una lista de ${asignaturaActual} en ${grupo} para el ${fecha}.\n\n` +
+                         `Pulse ACEPTAR solo si de verdad hubo otra clase de esa asignatura ese día.\n` +
                          `Pulse CANCELAR si es la misma clase repetida.`)) return;
         }
 
@@ -578,6 +643,7 @@
             docente_id: docente.id,                 // en celulares compartidos, cada docente envía solo lo suyo
             fecha: fecha,
             grupo: grupo,
+            asignatura: asignaturaActual,
             creado_en: new Date().toISOString(),
             registros: estadoActualClase.map(s => ({ id: s.id, nombre: s.name, estado: s.status }))
         };
@@ -589,11 +655,14 @@
         }
         outbox = nuevoOutbox;
         actualizarContadorPendientes();
-        alert(`✅ Clase guardada en el celular (${sesion.registros.length} estudiantes).\nUse "2. Sincronizar" cuando tenga internet.`);
+        alert(`✅ ${asignaturaActual} en ${grupo}: clase guardada en el celular ` +
+              `(${sesion.registros.length} estudiantes).\nUse "2. Sincronizar" cuando tenga internet.`);
 
         estadoActualClase = [];
         grupoActual = '';
+        asignaturaActual = '';
         document.getElementById('groupSelector').value = '';
+        cargarAsignaturas();
         renderActiveView();
     }
 
@@ -604,47 +673,99 @@
         const container = document.getElementById('statsContainer');
         const grupo = grupoActual;
 
-        if (!grupo) return mostrarMensaje(container, 'Selecciona un grupo para ver estadísticas.');
-        if (reemplazoDe(grupo)) return mostrarMensaje(container, 'Grupo en reemplazo: las estadísticas solo las ven el docente titular y coordinación.');
+        if (!grupo) return mostrarMensaje(container, 'Elija el grupo para ver estadísticas.');
+        if (!asignaturaActual) return mostrarMensaje(container, 'Elija la asignatura para ver sus estadísticas.');
 
-        const porId = new Map(resumen.filter(r => aTexto(r.grupo) === grupo).map(r => [aTexto(r.id), r]));
-        if (porId.size === 0) return mostrarMensaje(container, 'Aún no hay clases sincronizadas de este grupo. Pulsa "1. Bajar Listas y Datos" para actualizar.');
+        const propias = resumen.filter(r => aTexto(r.grupo) === grupo && aTexto(r.asignatura) === asignaturaActual);
+        if (propias.length === 0) {
+            return mostrarMensaje(container, reemplazoDe(grupo)
+                ? 'Grupo en reemplazo: las estadísticas las ven el docente titular y coordinación.'
+                : 'Aún no hay clases sincronizadas de esta asignatura. Pulse "1. Bajar Listas y Datos".');
+        }
+
+        const porId = new Map(propias.map(r => [aTexto(r.id), r]));
+        const previstas = propias[0].sesiones_previstas || 0;
 
         const lista = db.filter(s => aTexto(s.group) === grupo)
-            .map(s => {
-                const r = porId.get(aTexto(s.id)) || {};
-                return { nombre: aTexto(s.name), clases: r.clases || 0, fallas: r.fallas || 0, retardos: r.retardos || 0, evasiones: r.evasiones || 0 };
-            })
-            .filter(st => st.fallas + st.retardos + st.evasiones > 0)
-            .sort((a, b) => (b.evasiones - a.evasiones) || (b.fallas - a.fallas));
+            .map(s => Object.assign({ nombre: aTexto(s.name) }, porId.get(aTexto(s.id)) || {}))
+            .filter(st => (st.fallas_injustificadas || 0) + (st.fallas_justificadas || 0) +
+                          (st.fallas_exentas || 0) + (st.retardos || 0) + (st.evasiones || 0) > 0)
+            .sort((a, b) => (b.pct_injustificada || 0) - (a.pct_injustificada || 0) ||
+                            (b.consecutivas || 0) - (a.consecutivas || 0));
 
-        if (lista.length === 0) return mostrarMensaje(container, '🟢 Excelente: nadie en este grupo tiene faltas registradas.', '#155724');
+        if (lista.length === 0) {
+            return mostrarMensaje(container, '🟢 Nadie en esta asignatura tiene faltas registradas.', '#155724');
+        }
 
         const fragmento = document.createDocumentFragment();
+        const encabezado = document.createElement('div');
+        encabezado.className = 'mensaje-vacio';
+        encabezado.style.padding = '0 0 12px';
+        encabezado.textContent = `${asignaturaActual} · ${grupo} · ${previstas} clases previstas en el periodo`;
+        fragmento.appendChild(encabezado);
+
         lista.forEach(st => {
+            const inj = st.fallas_injustificadas || 0, just = st.fallas_justificadas || 0;
+            const exentas = st.fallas_exentas || 0, racha = st.consecutivas || 0;
+            const pctInj = st.pct_injustificada || 0, pctJust = st.pct_justificada || 0;
+            const superaInj = pctInj >= umbrales.injustificada;
+            const superaJust = pctJust >= umbrales.justificada;
+            const alerta = superaInj || superaJust || racha >= umbrales.consecutivas;
+
             const card = document.createElement('div');
-            card.className = 'stat-card' + ((st.fallas >= 3 || st.evasiones >= 1) ? ' alert-red' : '');
+            card.className = 'stat-card' + (alerta ? ' alert-red' : '');
             const nombre = document.createElement('div');
             nombre.className = 'stat-name';
             nombre.textContent = st.nombre;
+
             const numeros = document.createElement('div');
             numeros.className = 'stat-numbers';
-            [['#721c24', '🔴 Fallas: ', st.fallas], ['#856404', '🟠 Retardos: ', st.retardos],
-             ['#5a32a3', '🟣 Evasiones: ', st.evasiones], ['#555', '📅 Clases: ', st.clases]]
-                .forEach(([color, etiqueta, valor]) => {
-                    const span = document.createElement('span');
-                    span.style.color = color;
-                    span.append(etiqueta);
-                    const b = document.createElement('b');
-                    b.textContent = valor;
-                    span.appendChild(b);
-                    numeros.appendChild(span);
-                });
-            card.append(nombre, numeros);
+            const partes = [['#721c24', 'Injustificadas', inj]];
+            if (just) partes.push(['#0b5394', 'Justificadas', just]);
+            if (exentas) partes.push(['#38761d', 'Exentas', exentas]);
+            partes.push(['#856404', 'Retardos', st.retardos || 0], ['#5a32a3', 'Evasiones', st.evasiones || 0],
+                        ['#555', 'Clases', st.clases || 0]);
+            partes.forEach(([color, etiqueta, valor]) => {
+                const span = document.createElement('span');
+                span.style.color = color;
+                span.style.marginRight = '10px';
+                span.append(etiqueta + ': ');
+                const b = document.createElement('b');
+                b.textContent = valor;
+                span.appendChild(b);
+                numeros.appendChild(span);
+            });
+
+            // Lo que decide el Art. 7.3.3 es el porcentaje, no el conteo suelto.
+            const barra = document.createElement('div');
+            barra.className = 'stat-alerta';
+            barra.style.color = superaInj ? '#721c24' : '#333';
+            barra.textContent = `Inasistencia injustificada: ${pct(pctInj)} de ${pct(umbrales.injustificada)}` +
+                (superaInj ? '  ⛔ supera el tope' : '');
+            card.append(nombre, numeros, barra);
+
+            if (just > 0) {
+                const bj = document.createElement('div');
+                bj.className = 'stat-alerta';
+                bj.style.color = superaJust ? '#721c24' : '#333';
+                bj.textContent = `Inasistencia justificada: ${pct(pctJust)} de ${pct(umbrales.justificada)}` +
+                    (superaJust ? '  ⛔ supera el tope' : '');
+                card.appendChild(bj);
+            }
+            if (racha >= umbrales.consecutivas) {
+                const br = document.createElement('div');
+                br.className = 'stat-alerta';
+                br.style.color = '#721c24';
+                br.textContent = `⚠️ ${racha} fallas seguidas sin excusa: debe reportarlo en el observador ` +
+                                 `e informar a orientación y coordinación.`;
+                card.appendChild(br);
+            }
             fragmento.appendChild(card);
         });
         container.replaceChildren(fragmento);
     }
+
+    function pct(x) { return (Math.round((x || 0) * 1000) / 10).toFixed(1).replace('.', ',') + '%'; }
 
     /* ════════════════════════════════════════════════════════════════════
      *  8B. CLASES APARTADAS (rechazadas por el servidor)
@@ -657,14 +778,57 @@
         const banner = document.getElementById('bannerApartadas');
         if (!banner) return;
         const n = apartadasPropias().length;
-        banner.style.display = n > 0 ? 'block' : 'none';
-        banner.textContent = `⚠️ ${n} clase(s) apartada(s) por el servidor. Toque aquí para revisarlas.`;
+        const d = leerLS(CLAVES.DIAGNOSTICO, []).length;
+        banner.style.display = (n > 0 || d > 0) ? 'block' : 'none';
+        banner.textContent = n > 0
+            ? `⚠️ ${n} clase(s) apartada(s) por el servidor. Toque aquí para revisarlas.`
+            : `⚠️ ${d} aviso(s) de conexión para coordinación. Toque aquí para verlos.`;
+    }
+
+    /** Muestra la evidencia de las respuestas ilegibles, lista para copiar y enviar a coordinación. */
+    function renderDiagnostico() {
+        const container = document.getElementById('diagnosticoContainer');
+        const lista = leerLS(CLAVES.DIAGNOSTICO, []);
+        if (lista.length === 0) return container.replaceChildren();
+
+        const caja = document.createElement('div');
+        caja.className = 'diag-caja';
+        const titulo = document.createElement('b');
+        titulo.textContent = `🔧 ${lista.length} respuesta(s) que la app no pudo leer`;
+        const ayuda = document.createElement('div');
+        ayuda.style.margin = '6px 0';
+        ayuda.textContent = 'Su asistencia no está en riesgo. Copie este texto y envíelo a coordinación para corregir la causa.';
+        const area = document.createElement('textarea');
+        area.className = 'diag-texto';
+        area.readOnly = true;
+        area.value = lista.map(d =>
+            `${d.cuando} | app ${d.app || '?'} | docente ${d.docente_id || '?'}\n` +
+            `estado ${d.estado} | tipo ${d.tipo || '(ninguno)'} | ${d.largo} caracteres\n` +
+            `destino: ${d.destino}\n` +
+            `muestra: ${String(d.muestra || '').replace(/\s+/g, ' ').slice(0, 400)}`
+        ).join('\n\n');
+        area.onclick = () => area.select();
+        const borrar = document.createElement('button');
+        borrar.className = 'btn-panel';
+        borrar.style.marginTop = '10px';
+        borrar.textContent = '🗑️ Borrar estos avisos';
+        borrar.onclick = () => {
+            if (!confirm('¿Borrar los avisos de conexión? Su asistencia no se ve afectada.')) return;
+            localStorage.removeItem(CLAVES.DIAGNOSTICO);
+            renderActiveView();
+        };
+        caja.append(titulo, ayuda, area, borrar);
+        container.replaceChildren(caja);
     }
 
     function renderApartadas() {
         const container = document.getElementById('apartadasContainer');
         const lista = apartadasPropias();
-        if (lista.length === 0) return mostrarMensaje(container, '🟢 No tiene clases apartadas.', '#155724');
+        document.getElementById('introApartadas').style.display = lista.length > 0 ? 'block' : 'none';
+        if (lista.length === 0) {
+            mostrarMensaje(container, '🟢 No tiene clases apartadas.', '#155724');
+            return;
+        }
 
         const fragmento = document.createDocumentFragment();
         if (lista.length > 1) {
@@ -756,8 +920,57 @@
         try {
             return JSON.parse(texto);
         } catch (_) {
-            throw new Error('RESPUESTA_INVALIDA');
+            // La respuesta no es la nuestra. Se guarda evidencia: sin ella solo se puede especular.
+            const err = new Error('RESPUESTA_INVALIDA');
+            let tipo = '';
+            try { tipo = resp.headers.get('content-type') || ''; } catch (_e) {}
+            err.diagnostico = {
+                estado: resp.status,
+                tipo: tipo,
+                destino: resp.url || '',
+                largo: texto.length,
+                muestra: texto.slice(0, 400)
+            };
+            guardarDiagnostico(err);
+            throw err;
         }
+    }
+
+    /** Conserva las últimas 5 respuestas ilegibles para que coordinación pueda diagnosticarlas. */
+    function guardarDiagnostico(err) {
+        if (!err || !err.diagnostico) return;
+        const lista = leerLS(CLAVES.DIAGNOSTICO, []);
+        lista.unshift(Object.assign({
+            cuando: new Date().toISOString(),
+            docente_id: docente ? docente.id : '',
+            app: CONFIG.VERSION_APP
+        }, err.diagnostico));
+        guardarLS(CLAVES.DIAGNOSTICO, lista.slice(0, 5));
+    }
+
+    /**
+     * Cuando la respuesta se pierde de regreso, el servidor pudo haber escrito igual.
+     * En vez de reintentar a ciegas (que arriesga duplicados) o dar un error falso,
+     * se le pregunta qué clases ya tiene registradas y se cierran solo esas.
+     * Devuelve cuántas cerró, o null si tampoco se pudo consultar.
+     */
+    async function recuperarConfirmadas(ids) {
+        if (ids.length === 0) return 0;
+        let data;
+        try {
+            data = await llamarAPI({ accion: 'confirmar', codigo, session_ids: ids.slice(0, 200) });
+        } catch (_) {
+            return null;
+        }
+        if (!data.ok || !Array.isArray(data.confirmadas)) return null;
+        if (data.confirmadas.length === 0) return 0;
+
+        const cerradas = new Set(data.confirmadas);
+        const restante = outbox.filter(s => !cerradas.has(s.session_id));
+        if (!guardarLS(CLAVES.OUTBOX, restante)) return null;
+        outbox = restante;
+        actualizarContadorPendientes();
+        return cerradas.size;
     }
 
     function explicarError(err) {
@@ -785,7 +998,8 @@
 
             const aviso = aplicarDatosServidor(data);
             document.getElementById('lblDocente').textContent = docente.nombre;
-            alert(`✅ Datos actualizados:\n${db.length} estudiantes en sus listas.${resumenReemplazos()}${aviso}`);
+            alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${programacion.length} asignatura(s) a su cargo.` +
+              `${resumenReemplazos()}${aviso}`);
             cargarGrupos();
             renderActiveView();
         } catch (err) {
@@ -813,7 +1027,7 @@
         const btn = document.getElementById('btnSync');
         btn.disabled = true;
 
-        let insertados = 0, duplicados = 0, confirmadas = 0;
+        let insertados = 0, duplicados = 0, confirmadas = 0, recuperadas = 0;
         const rechazadas = [];
         let errorFinal = null;
 
@@ -859,6 +1073,11 @@
             }
         } catch (err) {
             errorFinal = err;
+            // No se sabe si el servidor escribió: se le pregunta antes de alarmar al docente.
+            if (err.message === 'RESPUESTA_INVALIDA' || err.message === 'SIN_RED') {
+                textoBotonSync('Verificando... ');
+                recuperadas = await recuperarConfirmadas(outbox.filter(esPropia).map(s => s.session_id)) || 0;
+            }
         } finally {
             sincronizando = false;
             btn.disabled = false;
@@ -871,8 +1090,17 @@
               (duplicados > 0 ? `, ${duplicados} ya estaban guardados (no se duplicaron).` : '.')
             : '';
         if (rechazadas.length > 0) mensaje += `\n\n⚠️ ${rechazadas.length} clase(s) rechazada(s) y apartada(s):\n` + rechazadas.join('\n') + '\nPuede revisarlas en el aviso amarillo de "Tomar Lista".';
-        if (errorFinal) mensaje += (mensaje ? '\n\n' : '') + '❌ ' + explicarError(errorFinal);
         const pendientes = outbox.filter(esPropia).length;
+        if (recuperadas > 0) {
+            mensaje += (mensaje ? '\n\n' : '') +
+                `✅ ${recuperadas} clase(s) ya habían quedado registradas en el colegio. La app lo verificó y no duplicó nada.`;
+        }
+        if (errorFinal) {
+            const resuelto = recuperadas > 0 && pendientes === 0 && rechazadas.length === 0;
+            mensaje += (mensaje ? '\n\n' : '') + (resuelto
+                ? 'ℹ️ La respuesta del servidor se perdió en el camino, pero su asistencia sí llegó. No debe hacer nada más.'
+                : '❌ ' + explicarError(errorFinal));
+        }
         if (pendientes > 0) mensaje += `\n\nQuedan ${pendientes} clase(s) pendiente(s) en el celular.`;
 
         renderActiveView();
