@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v3.0.0 (Fase 4 · Asignaturas)       ║
+  ║  ASISTENCIA ACACIA II · Frontend v3.2.0 (Clases por registrar)       ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V3.0_20260926                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V3.2_20260929                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -18,19 +18,22 @@
             // 1) URL de la API (Apps Script → Implementar → Administrar implementaciones → "URL de la aplicación web").
             //    Pegue la URL completa entre las comillas. Termina en /exec
             //    Si se "Actualiza versión" (lápiz ✏️) la URL NO cambia y no hay que tocar esto.
-            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwLTRi7zOCEQ56X9YApDlpW8JHcibSRK4nm8iGi1LKhX80_TdsO375cCYEHgrDMVtPiNw/exec',
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzX1LKZdloBfcF4fzH_wAgjPRWDqbjSbYK4dourJGx1kvVMWU5Zkw3b9UUFixdQ4TyHfQ/exec',
 
             // 2) PIN de bloqueo de pantalla (4 dígitos). Evita que un estudiante use el celular del docente.
             //    Los DATOS los protege el código personal de cada docente, que NO está en este archivo.
             PIN_ACCESO: '2026',
 
             // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
-            VERSION_API_REQUERIDA: '3.0.0',
+            //    3.9.0 porque desde ahí el servidor envía los días de clase y las
+            //    clases ya registradas, que alimentan la pestaña "Por registrar".
+            //    Publique siempre el servidor primero.
+            VERSION_API_REQUERIDA: '3.9.0',
 
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '3.0.0'
+            VERSION_APP: '3.2.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -103,6 +106,14 @@
         .bottom-nav { display: flex; justify-content: space-around; padding: 4px 0 6px; }
         .nav-item { text-align: center; color: #666; font-size: 13px; font-weight: bold; cursor: pointer; flex: 1; min-width: 0; padding: 6px 4px; line-height: 1.2; overflow-wrap: anywhere; }
         .banner-apartadas { display: none; background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; }
+        .banner-correccion { display: none; background: #e7f1fb; color: #1d4f7a; border: 1px solid #9cc3e6; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; line-height: 1.4; }
+        .banner-correccion b { display: block; margin-bottom: 2px; }
+        .curso-pend { background: white; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .curso-pend h4 { margin: 0 0 4px; font-size: 15px; color: #2c3e50; }
+        .curso-pend .faltan { font-size: 13px; color: #856404; font-weight: bold; margin-bottom: 8px; }
+        .curso-pend .al-dia { font-size: 13px; color: #155724; font-weight: bold; }
+        .chip { display: inline-block; padding: 7px 10px; margin: 3px; border-radius: 14px; border: 1px solid #2c3e50; background: #fff; color: #2c3e50; font-size: 13px; cursor: pointer; }
+        .chip:active { background: #2c3e50; color: #fff; }
         .apartada-card { background: white; border-left: 5px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 14px; }
         .apartada-motivo { color: #721c24; margin: 6px 0 10px; }
         .apartada-acciones { display: flex; gap: 8px; }
@@ -149,7 +160,7 @@
             <div style="font-size: 18px; font-weight: bold;">Acacia II - Asistencia</div>
             <div class="lbl-docente" id="lblDocente"></div>
             <div class="header-controls">
-                <input type="date" id="datePicker">
+                <input type="date" id="datePicker" onchange="alCambiarFecha()">
                 <select id="groupSelector" onchange="alCambiarGrupo()">
                     <option value="">Grupo...</option>
                 </select>
@@ -169,7 +180,8 @@
         <!-- VISTA 1: TOMAR ASISTENCIA -->
         <div id="viewAsistencia" class="view-container view-active">
             <div id="bannerApartadas" class="banner-apartadas" onclick="cambiarPestana('Apartadas')"></div>
-            <div id="groupTotalBanner">Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
+            <div id="bannerCorreccion" class="banner-correccion"></div>
+            <div id="groupTotalBanner"><span id="lblFechaClase"></span>Total de Estudiantes: <span id="lblTotal" style="color: #007bff;">0</span></div>
             <div id="statsDashboard">
                 <div style="color: #155724;">🟢 <span id="cPre">0</span></div>
                 <div style="color: #721c24;">🔴 <span id="cFal">0</span></div>
@@ -190,6 +202,16 @@
             <button class="btn-cambiar-codigo" onclick="cambiarCodigo()">🔑 Cambiar código de docente</button>
         </div>
 
+        <!-- VISTA 2b: CLASES POR REGISTRAR (carga del historial) -->
+        <div id="viewPorRegistrar" class="view-container">
+            <div style="background: #e7f1fb; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #1d4f7a;">
+                Clases de este periodo que todavía no tienen lista. Toque una fecha: la app abre <b>esa clase exacta</b>,
+                con la fecha ya puesta. Así no hay forma de guardarla en el día equivocado.
+            </div>
+            <div id="porRegistrarContainer"></div>
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
+        </div>
+
         <!-- VISTA 3: CLASES APARTADAS POR EL SERVIDOR -->
         <div id="viewApartadas" class="view-container">
             <div id="introApartadas" style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404;">
@@ -206,6 +228,7 @@
             </div>
             <div class="bottom-nav">
                 <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
+                <div class="nav-item" id="tabPorRegistrar" onclick="cambiarPestana('PorRegistrar')">📋 Por registrar</div>
                 <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
             </div>
         </div>
@@ -226,8 +249,17 @@
         CUARENTENA: 'acacia_rechazadas',
         DIAGNOSTICO: 'acacia_diagnostico',
         CODIGO: 'acacia_codigo',
-        DOCENTE: 'acacia_docente'
+        DOCENTE: 'acacia_docente',
+        FICHAS: 'acacia_fichas',
+        SIN_CLASE: 'acacia_sin_clase',
+        RANGO: 'acacia_periodo_rango',
+        // Copia de las listas propias ya enviadas (solo documento y estado, sin
+        // nombres), para poder corregir una clase con los estados anteriores
+        // cargados. Se conserva DIAS_ENVIADAS días y se borra sola.
+        ENVIADAS: 'acacia_enviadas'
     });
+    const DIAS_ENVIADAS = 10;
+    const MAX_ENVIADAS = 80;
     const ESTADOS = ['Presente', 'Falla', 'Retardo', 'Evasion'];
 
     function leerLS(clave, porDefecto) {
@@ -293,7 +325,13 @@
     let outbox = leerLS(CLAVES.OUTBOX, []);
     let codigo = leerLS(CLAVES.CODIGO, '');
     let docente = leerLS(CLAVES.DOCENTE, null);
+    let fichas = leerLS(CLAVES.FICHAS, {});
+    let sinClase = leerLS(CLAVES.SIN_CLASE, []);
+    let periodoRango = leerLS(CLAVES.RANGO, null);
+    let volverAPorRegistrar = false;   // la lista se abrió desde "Por registrar"
     let estadoActualClase = [];
+    let claseCargada = '';          // fecha|grupo|asignatura de la lista en pantalla
+    let listaModificada = false;    // el docente tocó algo desde que se cargó
     let grupoActual = '';
     let currentTab = 'Asistencia';
     let sincronizando = false;
@@ -425,6 +463,12 @@
         return (docente.reemplazos || []).find(r => r.grupo === grupo) || null;
     }
 
+    /** "T.A.A.-10-G1 · ficha 3432312": el instructor del SENA reconoce su curso por la ficha. */
+    function etiquetaGrupo(grupo) {
+        const f = fichas && fichas[grupo];
+        return f ? `${grupo} · ficha ${f}` : grupo;
+    }
+
     /** Asignaturas que este docente puede dictar en ese grupo, según la programación. */
     function asignaturasDe(grupo) {
         return programacion.filter(p => aTexto(p.grupo) === grupo)
@@ -443,6 +487,12 @@
         resumen = Array.isArray(data.resumen) ? data.resumen : [];
         programacion = Array.isArray(data.programacion) ? data.programacion : [];
         if (data.umbrales) umbrales = data.umbrales;
+        fichas = (data.fichas && typeof data.fichas === 'object') ? data.fichas : {};
+        guardarLS(CLAVES.FICHAS, fichas);
+        sinClase = Array.isArray(data.sin_clase) ? data.sin_clase : [];
+        guardarLS(CLAVES.SIN_CLASE, sinClase);
+        periodoRango = data.periodo_rango || null;
+        guardarLS(CLAVES.RANGO, periodoRango);
         sesionesRecientes = Array.isArray(data.sesiones_recientes) ? data.sesiones_recientes : [];
         docente = data.docente;
         guardarLS(CLAVES.DOCENTE, docente);
@@ -463,6 +513,8 @@
         currentTab = tabName;
         document.getElementById('tabAsistencia').className = 'nav-item' + (tabName === 'Asistencia' ? ' nav-active' : '');
         document.getElementById('tabStats').className = 'nav-item' + (tabName === 'Estadisticas' ? ' nav-active' : '');
+        document.getElementById('tabPorRegistrar').className = 'nav-item' + (tabName === 'PorRegistrar' ? ' nav-active' : '');
+        document.getElementById('viewPorRegistrar').classList.toggle('view-active', tabName === 'PorRegistrar');
         document.getElementById('viewAsistencia').classList.toggle('view-active', tabName === 'Asistencia');
         document.getElementById('viewEstadisticas').classList.toggle('view-active', tabName === 'Estadisticas');
         document.getElementById('viewApartadas').classList.toggle('view-active', tabName === 'Apartadas');
@@ -474,12 +526,34 @@
         document.getElementById('fabSave').style.display = enAsistencia ? 'flex' : 'none';
         actualizarBannerApartadas();
         if (currentTab === 'Apartadas') { renderApartadas(); renderDiagnostico(); }
+        else if (currentTab === 'PorRegistrar') renderPorRegistrar();
         else if (enAsistencia) renderList();
         else renderEstadisticas();
+        actualizarContadorPorRegistrar();
     }
 
     function hayMarcasSinGuardar() {
-        return estadoActualClase.some(s => s.status !== 'Presente');
+        return listaModificada && estadoActualClase.length > 0;
+    }
+
+    function descartarLista() {
+        estadoActualClase = [];
+        claseCargada = '';
+        listaModificada = false;
+        volverAPorRegistrar = false;     // si cambia de clase a mano, ya no viene de "Por registrar"
+    }
+
+    function alCambiarFecha() {
+        const picker = document.getElementById('datePicker');
+        const fechaMostrada = claseCargada.split('|')[0];
+        if (hayMarcasSinGuardar() && fechaMostrada && picker.value !== fechaMostrada) {
+            if (!confirm(`Tiene marcas sin guardar del ${fechaMostrada}.\n¿Descartarlas y cambiar de fecha?`)) {
+                picker.value = fechaMostrada;
+                return;
+            }
+        }
+        descartarLista();
+        renderActiveView();
     }
 
     function alCambiarGrupo() {
@@ -492,7 +566,7 @@
         }
         grupoActual = selector.value;
         asignaturaActual = '';
-        estadoActualClase = [];
+        descartarLista();
         cargarAsignaturas();
         renderActiveView();
     }
@@ -506,7 +580,7 @@
             }
         }
         asignaturaActual = selector.value;
-        estadoActualClase = [];
+        descartarLista();
         renderActiveView();
     }
 
@@ -516,7 +590,7 @@
         const grupos = [...new Set(db.map(s => aTexto(s.group)))].filter(g => g !== '').sort();
         grupos.forEach(grupo => {
             const r = reemplazoDe(grupo);
-            selector.appendChild(new Option(r ? `${grupo} (reemplazo)` : grupo, grupo));
+            selector.appendChild(new Option(r ? `${etiquetaGrupo(grupo)} (reemplazo)` : etiquetaGrupo(grupo), grupo));
         });
         selector.value = grupos.includes(grupoActual) ? grupoActual : '';
         grupoActual = selector.value;
@@ -557,6 +631,7 @@
         const grupo = grupoActual;
 
         if (db.length === 0 || !grupo || !asignaturaActual) {
+            pintarAvisoCorreccion(null);
             document.getElementById('statsDashboard').style.display = 'none';
             document.getElementById('groupTotalBanner').style.display = 'none';
             const texto = db.length === 0 ? 'Sin datos. Pulsa "1. Bajar Listas y Datos".'
@@ -567,10 +642,24 @@
             return mostrarMensaje(container, texto);
         }
 
-        if (estadoActualClase.length === 0 || estadoActualClase[0].group !== grupo) {
+        const fecha = document.getElementById('datePicker').value;
+        const clave = claveClase(fecha, grupo, asignaturaActual);
+        const previa = listaPrevia(fecha, grupo, asignaturaActual);
+        if (estadoActualClase.length === 0 || claseCargada !== clave) {
+            // Si esta clase ya tiene lista, se cargan sus marcas: corregir es cambiar
+            // lo que estaba mal, no volver a marcar a todos desde cero.
+            const antes = new Map(((previa && previa.sesion && previa.sesion.registros) || [])
+                                  .map(r => [aTexto(r.id), r.estado]));
             estadoActualClase = db.filter(s => aTexto(s.group) === grupo)
-                                  .map(s => ({ id: aTexto(s.id), name: aTexto(s.name), group: grupo, status: 'Presente' }));
+                                  .map(s => {
+                                      const e = antes.get(aTexto(s.id));
+                                      return { id: aTexto(s.id), name: aTexto(s.name), group: grupo,
+                                               status: ESTADOS.indexOf(e) !== -1 ? e : 'Presente' };
+                                  });
+            claseCargada = clave;
+            listaModificada = false;
         }
+        pintarAvisoCorreccion(previa);
 
         const fragmento = document.createDocumentFragment();
         estadoActualClase.forEach((student, index) => {
@@ -587,6 +676,7 @@
                 s.status = ESTADOS[(ESTADOS.indexOf(s.status) + 1) % ESTADOS.length];
                 card.className = `student-card estado-${s.status}`;
                 badge.textContent = s.status;
+                listaModificada = true;
                 actualizarDashboardDiario();
             };
             fragmento.appendChild(card);
@@ -603,17 +693,204 @@
         const c = { Presente: 0, Falla: 0, Retardo: 0, Evasion: 0 };
         estadoActualClase.forEach(s => c[s.status]++);
         document.getElementById('lblTotal').textContent = estadoActualClase.length;
+        const f = document.getElementById('datePicker').value;
+        document.getElementById('lblFechaClase').textContent = f ? `Clase del ${fechaLarga(f)} · ` : '';
         document.getElementById('cPre').textContent = c.Presente;
         document.getElementById('cFal').textContent = c.Falla;
         document.getElementById('cRet').textContent = c.Retardo;
         document.getElementById('cEva').textContent = c.Evasion;
     }
 
-    function existeListaPrevia(fecha, grupo, asignatura) {
-        const enOutbox = outbox.some(s => s.fecha === fecha && s.grupo === grupo && s.asignatura === asignatura);
-        const enServidor = sesionesRecientes.some(h => aTexto(h.fecha) === fecha &&
+    /* ── Corrección de listas ────────────────────────────────────────────
+     * En Media hay una sola clase por día de cada asignatura en cada grupo. Si
+     * esta clase ya tiene lista, lo que el docente guarde ahora es una CORRECCIÓN:
+     * el servidor (v3.8+) cuenta solo la más reciente. Aquí se cargan las marcas
+     * anteriores para que corrija lo que estaba mal y no se le borren las demás.
+     */
+    function claveClase(fecha, grupo, asignatura) {
+        return fecha + '|' + grupo + '|' + asignatura;
+    }
+
+    function esDeEsteDocente(s) {
+        return !!docente && (!s.docente_id || s.docente_id === docente.id);
+    }
+
+    /** La lista anterior de esta misma clase: sin enviar, enviada desde aquí, o solo en el colegio. */
+    function listaPrevia(fecha, grupo, asignatura) {
+        if (!fecha || !grupo || !asignatura) return null;
+        const misma = s => s.fecha === fecha && s.grupo === grupo && s.asignatura === asignatura && esDeEsteDocente(s);
+        const enCelular = outbox.filter(misma);
+        if (enCelular.length) return { origen: 'celular', sesion: enCelular[enCelular.length - 1] };
+        const enviadas = leerLS(CLAVES.ENVIADAS, []).filter(misma);
+        if (enviadas.length) return { origen: 'enviada', sesion: enviadas[enviadas.length - 1] };
+        const enColegio = sesionesRecientes.some(h => aTexto(h.fecha) === fecha &&
             aTexto(h.grupo) === grupo && aTexto(h.asignatura) === asignatura);
-        return enOutbox || enServidor;
+        return enColegio ? { origen: 'colegio', sesion: null } : null;
+    }
+
+    function pintarAvisoCorreccion(previa) {
+        const b = document.getElementById('bannerCorreccion');
+        if (!b) return;
+        if (!previa) { b.style.display = 'none'; b.replaceChildren(); return; }
+        const titulo = document.createElement('b');
+        const texto = document.createElement('span');
+        if (previa.origen === 'celular') {
+            titulo.textContent = '✏️ Está corrigiendo una lista que aún no ha enviado';
+            texto.textContent = 'Se cargaron las marcas que tenía. Cambie lo que estaba mal y guarde: ' +
+                                'la lista anterior se reemplaza y no se enviarán dos.';
+        } else if (previa.origen === 'enviada') {
+            titulo.textContent = '✏️ Esta clase ya se envió al colegio';
+            texto.textContent = 'Se cargaron las marcas que envió. Cambie solo lo que estaba mal y guarde: ' +
+                                'el colegio contará únicamente la lista nueva.';
+        } else {
+            titulo.textContent = '⚠️ Esta clase ya tiene lista en el colegio';
+            texto.textContent = 'Fue tomada desde otro celular o antes de actualizar la app, así que sus marcas no ' +
+                                'están aquí. Si guarda, esta lista REEMPLAZA a la anterior por completo: ' +
+                                'marque a TODOS los que faltaron, no solo el cambio.';
+        }
+        b.replaceChildren(titulo, texto);
+        b.style.display = 'block';
+    }
+
+    /* ── Días de clase y fechas ─────────────────────────────────────────── */
+    const NOMBRES_DIA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const NUMERO_DIA = { DOMINGO: 0, LUNES: 1, MARTES: 2, MIERCOLES: 3, JUEVES: 4, VIERNES: 5, SABADO: 6 };
+
+    function numeroDia(nombre) {
+        const k = aTexto(nombre).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+        return NUMERO_DIA[k] === undefined ? null : NUMERO_DIA[k];
+    }
+    function aFecha(iso) { const [a, m, d] = iso.split('-').map(Number); return new Date(a, m - 1, d); }
+    function diaSemana(iso) { return aFecha(iso).getDay(); }
+    function fechaLarga(iso) {
+        const [a, m, d] = iso.split('-');
+        return `${NOMBRES_DIA[diaSemana(iso)]} ${d}/${m}`;
+    }
+    function fechaCorta(iso) {
+        const [a, m, d] = iso.split('-');
+        return `${NOMBRES_DIA[diaSemana(iso)].slice(0, 3)} ${d}/${m}`;
+    }
+    function sinClaseEn(iso, grupo) {
+        return (sinClase || []).some(c => c.fecha === iso && (!c.grupos || c.grupos.length === 0 || c.grupos.indexOf(grupo) !== -1));
+    }
+    function diasDeCurso(grupo, asignatura) {
+        const p = programacion.find(x => aTexto(x.grupo) === grupo && aTexto(x.asignatura) === asignatura);
+        return p && Array.isArray(p.dias) ? p.dias : [];
+    }
+
+    /* ── Por registrar: las clases del periodo que aún no tienen lista ──────
+     * Es la herramienta para subir el historial en papel. En vez de elegir la
+     * fecha en el calendario (donde el error típico es dejar la de hoy), el
+     * docente toca la fecha que falta y la app abre esa clase exacta.
+     */
+    function clasesPorRegistrar() {
+        if (!periodoRango || !periodoRango.desde) return null;
+        const hoy = fechaLocalISO();
+        const hasta = periodoRango.hasta < hoy ? periodoRango.hasta : hoy;
+        const tienen = new Set(sesionesRecientes.map(h => claveClase(aTexto(h.fecha), aTexto(h.grupo), aTexto(h.asignatura))));
+        outbox.filter(esDeEsteDocente).forEach(s => tienen.add(claveClase(s.fecha, s.grupo, s.asignatura)));
+        const vistos = new Set();
+        const cursos = [];
+        programacion.forEach(p => {
+            if (p.reemplazo) return;                          // lo ajeno no se le cobra al reemplazo
+            const grupo = aTexto(p.grupo), asignatura = aTexto(p.asignatura);
+            const k = grupo + '|' + asignatura;
+            if (vistos.has(k)) return;
+            vistos.add(k);
+            const nums = (p.dias || []).map(numeroDia).filter(n => n !== null);
+            if (nums.length === 0) return;
+            const faltan = [];
+            const d = aFecha(periodoRango.desde);
+            for (let iso = fechaLocalISO(d); iso <= hasta; d.setDate(d.getDate() + 1), iso = fechaLocalISO(d)) {
+                if (nums.indexOf(d.getDay()) === -1 || sinClaseEn(iso, grupo)) continue;
+                if (!tienen.has(claveClase(iso, grupo, asignatura))) faltan.push(iso);
+            }
+            cursos.push({ grupo, asignatura, faltan });
+        });
+        return cursos.sort((a, b) => b.faltan.length - a.faltan.length || a.grupo.localeCompare(b.grupo));
+    }
+
+    function actualizarContadorPorRegistrar() {
+        const tab = document.getElementById('tabPorRegistrar');
+        if (!tab) return;
+        const cursos = clasesPorRegistrar();
+        const n = cursos ? cursos.reduce((t, c) => t + c.faltan.length, 0) : 0;
+        tab.textContent = n > 0 ? `📋 Por registrar (${n})` : '📋 Por registrar';
+    }
+
+    function renderPorRegistrar() {
+        const cont = document.getElementById('porRegistrarContainer');
+        const cursos = clasesPorRegistrar();
+        if (cursos === null) return mostrarMensaje(cont, 'Pulse "1. Bajar Listas y Datos" para ver las clases por registrar.');
+        if (cursos.length === 0) return mostrarMensaje(cont, 'No tiene cursos con días de clase definidos. Avise a coordinación.');
+        const total = cursos.reduce((t, c) => t + c.faltan.length, 0);
+        if (total === 0) return mostrarMensaje(cont, '🟢 Todas las clases del periodo, hasta hoy, tienen lista.', '#155724');
+
+        const frag = document.createDocumentFragment();
+        cursos.forEach(c => {
+            const caja = document.createElement('div');
+            caja.className = 'curso-pend';
+            const h = document.createElement('h4');
+            h.textContent = `${etiquetaGrupo(c.grupo)} · ${c.asignatura}`;
+            caja.appendChild(h);
+            const info = document.createElement('div');
+            if (c.faltan.length === 0) {
+                info.className = 'al-dia';
+                info.textContent = '🟢 Al día';
+                caja.appendChild(info);
+            } else {
+                info.className = 'faltan';
+                info.textContent = `Faltan ${c.faltan.length} lista(s):`;
+                caja.appendChild(info);
+                c.faltan.forEach(iso => {
+                    const b = document.createElement('button');
+                    b.className = 'chip';
+                    b.textContent = fechaCorta(iso);
+                    b.onclick = () => abrirClase(iso, c.grupo, c.asignatura, true);
+                    caja.appendChild(b);
+                });
+            }
+            frag.appendChild(caja);
+        });
+        cont.replaceChildren(frag);
+    }
+
+    /** Abre una clase exacta: fecha, grupo y asignatura, sin pasar por el calendario. */
+    function abrirClase(iso, grupo, asignatura, desdePorRegistrar) {
+        if (hayMarcasSinGuardar() && !confirm('Tiene marcas sin guardar.\n¿Descartarlas y abrir la clase del ' + fechaLarga(iso) + '?')) return;
+        document.getElementById('datePicker').value = iso;
+        const sel = document.getElementById('groupSelector');
+        sel.value = grupo;
+        grupoActual = sel.value === grupo ? grupo : '';
+        asignaturaActual = asignatura;
+        cargarAsignaturas();
+        descartarLista();
+        volverAPorRegistrar = !!desdePorRegistrar;
+        cambiarPestana('Asistencia');
+    }
+
+    /** Guarda, sin nombres, las listas propias que el colegio confirmó. Si no cabe, solo se pierde la precarga. */
+    function archivarEnviadas(sesiones) {
+        if (!sesiones || sesiones.length === 0) return;
+        const limite = fechaLocalISO(new Date(Date.now() - DIAS_ENVIADAS * 86400000));
+        const nuevas = sesiones.map(s => ({
+            session_id: s.session_id, docente_id: s.docente_id, fecha: s.fecha, grupo: s.grupo,
+            asignatura: s.asignatura, creado_en: s.creado_en,
+            registros: (s.registros || []).map(r => ({ id: r.id, estado: r.estado }))
+        }));
+        const lista = leerLS(CLAVES.ENVIADAS, []).concat(nuevas)
+            .filter(s => s.fecha >= limite)
+            .slice(-MAX_ENVIADAS);
+        guardarLS(CLAVES.ENVIADAS, lista);
+        // Lo confirmado ya está en el colegio: se anota de una vez, para que no
+        // vuelva a salir en "Por registrar" antes de la próxima descarga.
+        sesiones.forEach(s => {
+            if (!sesionesRecientes.some(h => aTexto(h.fecha) === s.fecha && aTexto(h.grupo) === s.grupo &&
+                                             aTexto(h.asignatura) === s.asignatura)) {
+                sesionesRecientes.push({ fecha: s.fecha, grupo: s.grupo, asignatura: s.asignatura });
+            }
+        });
+        guardarLS(CLAVES.SESIONES, sesionesRecientes);
     }
 
     function guardarClaseLocal() {
@@ -632,10 +909,27 @@
         if (r && fecha > r.hasta) {
             if (!confirm(`Su reemplazo en ${grupo} termina el ${r.hasta}.\nEl servidor rechazará clases con fecha ${fecha}. ¿Guardar de todas formas?`)) return;
         }
-        if (existeListaPrevia(fecha, grupo, asignaturaActual)) {
-            if (!confirm(`Ya hay una lista de ${asignaturaActual} en ${grupo} para el ${fecha}.\n\n` +
-                         `Pulse ACEPTAR solo si de verdad hubo otra clase de esa asignatura ese día.\n` +
-                         `Pulse CANCELAR si es la misma clase repetida.`)) return;
+        const dias = diasDeCurso(grupo, asignaturaActual);
+        const nums = dias.map(numeroDia).filter(n => n !== null);
+        if (nums.length) {
+            const noEsDia = nums.indexOf(diaSemana(fecha)) === -1;
+            const marcado = sinClaseEn(fecha, grupo);
+            if (noEsDia || marcado) {
+                if (!confirm(`⚠️ ¿Revisó la fecha?\n\nEl ${fechaLarga(fecha)} ` +
+                             (noEsDia ? `no es día de clase de ${etiquetaGrupo(grupo)}: tiene clase ${dias.join(' y ').toLowerCase()}.`
+                                      : `está marcado sin clase para ${etiquetaGrupo(grupo)}.`) +
+                             `\n\nPulse CANCELAR para corregir la fecha, o ACEPTAR si de verdad hubo clase ese día.`)) return;
+            }
+        }
+
+        const previa = listaPrevia(fecha, grupo, asignaturaActual);
+        if (previa) {
+            const texto = previa.origen === 'celular'
+                ? `Esta lista REEMPLAZA la de ${asignaturaActual} del ${fecha} que tiene guardada sin enviar.`
+                : previa.origen === 'enviada'
+                    ? `Esta lista CORRIGE la de ${asignaturaActual} del ${fecha} que ya envió.\nEl colegio contará solo la nueva.`
+                    : `Ya hay una lista de ${asignaturaActual} del ${fecha} en el colegio.\nEsta la REEMPLAZA por completo.`;
+            if (!confirm(`✏️ ${texto}\n\n¿Guardar la corrección?`)) return;
         }
 
         const sesion = {
@@ -648,17 +942,31 @@
             registros: estadoActualClase.map(s => ({ id: s.id, nombre: s.name, estado: s.status }))
         };
 
-        const nuevoOutbox = outbox.concat([sesion]);
+        // Si la anterior aún no salió del celular, se reemplaza aquí mismo: no viajan dos.
+        const base = (previa && previa.origen === 'celular')
+            ? outbox.filter(s => !(s.fecha === fecha && s.grupo === grupo &&
+                                   s.asignatura === asignaturaActual && esDeEsteDocente(s)))
+            : outbox;
+        const nuevoOutbox = base.concat([sesion]);
         if (!guardarLS(CLAVES.OUTBOX, nuevoOutbox)) {
             return alert('⚠️ NO SE GUARDÓ: la memoria del celular está llena.\n' +
                          'No cierre la app. Conéctese a internet y pulse "2. Sincronizar".');
         }
         outbox = nuevoOutbox;
         actualizarContadorPendientes();
-        alert(`✅ ${asignaturaActual} en ${grupo}: clase guardada en el celular ` +
-              `(${sesion.registros.length} estudiantes).\nUse "2. Sincronizar" cuando tenga internet.`);
+        alert(`✅ ${asignaturaActual} en ${etiquetaGrupo(grupo)}: ` +
+              (previa ? 'corrección guardada en el celular' : 'clase guardada en el celular') +
+              ` (${sesion.registros.length} estudiantes).\nUse "2. Sincronizar" cuando tenga internet.`);
 
-        estadoActualClase = [];
+        const volver = volverAPorRegistrar;
+        descartarLista();
+        if (volver) {
+            grupoActual = '';
+            asignaturaActual = '';
+            document.getElementById('groupSelector').value = '';
+            cargarAsignaturas();
+            return cambiarPestana('PorRegistrar');
+        }
         grupoActual = '';
         asignaturaActual = '';
         document.getElementById('groupSelector').value = '';
@@ -701,7 +1009,7 @@
         const encabezado = document.createElement('div');
         encabezado.className = 'mensaje-vacio';
         encabezado.style.padding = '0 0 12px';
-        encabezado.textContent = `${asignaturaActual} · ${grupo} · ${previstas} clases previstas en el periodo`;
+        encabezado.textContent = `${asignaturaActual} · ${etiquetaGrupo(grupo)} · ${previstas} clases previstas en el periodo`;
         fragmento.appendChild(encabezado);
 
         lista.forEach(st => {
@@ -966,6 +1274,7 @@
         if (data.confirmadas.length === 0) return 0;
 
         const cerradas = new Set(data.confirmadas);
+        archivarEnviadas(outbox.filter(s => cerradas.has(s.session_id)));
         const restante = outbox.filter(s => !cerradas.has(s.session_id));
         if (!guardarLS(CLAVES.OUTBOX, restante)) return null;
         outbox = restante;
@@ -973,10 +1282,31 @@
         return cerradas.size;
     }
 
+    const esperar = ms => new Promise(r => setTimeout(r, ms));
+
+    /**
+     * La respuesta de Google a veces se pierde de regreso (en el colegio ha pasado
+     * como "404" y como página ajena), aunque el servidor SÍ escribió. Una sola
+     * consulta inmediata suele fallar por la misma causa; tres, con espera, casi
+     * nunca. Devuelve lo mismo que recuperarConfirmadas.
+     */
+    async function recuperarConReintentos(ids) {
+        const esperas = [0, 2500, 6000];
+        for (let i = 0; i < esperas.length; i++) {
+            if (esperas[i]) await esperar(esperas[i]);
+            const n = await recuperarConfirmadas(ids);
+            if (n !== null) return n;
+        }
+        return null;
+    }
+
     function explicarError(err) {
         switch (err.message) {
             case 'SIN_RED': return 'No hay conexión a internet. Los datos siguen guardados en el celular.';
             case 'RESPUESTA_INVALIDA': return 'El servidor respondió con un error. Avise a coordinación. Los datos siguen guardados en el celular.';
+            case 'RESPUESTA_PERDIDA': return 'La respuesta del colegio se perdió en el camino y no se pudo confirmar.\n' +
+                'Lo más probable es que su clase SÍ haya llegado. Pulse "2. Sincronizar" de nuevo en unos minutos: ' +
+                'la app lo verificará y NO duplicará nada.\nSi el aviso se repite todo el día, avise a coordinación.';
             case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación.';
             case 'CODIGO_REVOCADO': return 'Su código fue revocado o cambiado. Las clases pendientes siguen guardadas: active el código nuevo para enviarlas.';
             default: return err.message;
@@ -1062,6 +1392,7 @@
                     enCuarentena.forEach(s => rechazadas.push(`${s.grupo} ${s.fecha}: ${s.motivo_rechazo}`));
                 }
 
+                archivarEnviadas(outbox.filter(s => idsOk.has(s.session_id)));
                 const restante = outbox.filter(s => !idsOk.has(s.session_id) && !motivos.has(s.session_id));
                 guardarLS(CLAVES.OUTBOX, restante);
                 outbox = restante;
@@ -1076,7 +1407,9 @@
             // No se sabe si el servidor escribió: se le pregunta antes de alarmar al docente.
             if (err.message === 'RESPUESTA_INVALIDA' || err.message === 'SIN_RED') {
                 textoBotonSync('Verificando... ');
-                recuperadas = await recuperarConfirmadas(outbox.filter(esPropia).map(s => s.session_id)) || 0;
+                const r = await recuperarConReintentos(outbox.filter(esPropia).map(s => s.session_id));
+                recuperadas = r || 0;
+                if (r === null && err.message === 'RESPUESTA_INVALIDA') errorFinal = new Error('RESPUESTA_PERDIDA');
             }
         } finally {
             sincronizando = false;
