@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v3.2.0 (Clases por registrar)       ║
+  ║  ASISTENCIA ACACIA II · Frontend v3.3.0 (Tomar lista rápido)         ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V3.2_20260929                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V3.3_20260929                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -25,15 +25,15 @@
             PIN_ACCESO: '2026',
 
             // 3) Versión mínima del servidor con la que esta app funciona. No modificar.
-            //    3.9.0 porque desde ahí el servidor envía los días de clase y las
-            //    clases ya registradas, que alimentan la pestaña "Por registrar".
+            //    3.10.0 porque desde ahí bajar listas no trae estadísticas (es más
+            //    rápido) y las estadísticas se piden aparte, al abrir su pestaña.
             //    Publique siempre el servidor primero.
-            VERSION_API_REQUERIDA: '3.9.0',
+            VERSION_API_REQUERIDA: '3.10.0',
 
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '3.2.0'
+            VERSION_APP: '3.3.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -194,8 +194,16 @@
 
         <!-- VISTA 2: ESTADÍSTICAS HISTÓRICAS -->
         <div id="viewEstadisticas" class="view-container">
-            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: center;">
+            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #856404; text-align: center;">
                 Acumulado de la asignatura elegida, según las clases ya sincronizadas. Los porcentajes son los del Art. 7.3.3 del Manual.
+            </div>
+            <!-- Las estadísticas se piden solo al abrir esta pestaña: así bajar listas y
+                 enviar asistencia no cargan con ellas. -->
+            <div id="statsEstado" style="display:flex; align-items:center; justify-content:space-between; gap:8px;
+                 background:#eef2f7; padding:8px 10px; border-radius:8px; margin-bottom:12px; font-size:12px; color:#334;">
+                <span id="statsHora">Estadísticas sin cargar.</span>
+                <button id="btnStats" onclick="cargarEstadisticas(true)"
+                    style="border:none; background:#1d4f7a; color:#fff; border-radius:6px; padding:6px 10px; font-size:12px;">🔄 Actualizar</button>
             </div>
             <div id="statsContainer"></div>
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
@@ -256,8 +264,12 @@
         // Copia de las listas propias ya enviadas (solo documento y estado, sin
         // nombres), para poder corregir una clase con los estados anteriores
         // cargados. Se conserva DIAS_ENVIADAS días y se borra sola.
-        ENVIADAS: 'acacia_enviadas'
+        ENVIADAS: 'acacia_enviadas',
+        // Cuándo se calcularon las estadísticas guardadas y cuándo se bajaron.
+        STATS_INFO: 'acacia_stats_info'
     });
+    // Si las estadísticas guardadas tienen más de esto, se vuelven a pedir al abrir la pestaña.
+    const MINUTOS_STATS = 10;
     const DIAS_ENVIADAS = 10;
     const MAX_ENVIADAS = 80;
     const ESTADOS = ['Presente', 'Falla', 'Retardo', 'Evasion'];
@@ -328,6 +340,9 @@
     let fichas = leerLS(CLAVES.FICHAS, {});
     let sinClase = leerLS(CLAVES.SIN_CLASE, []);
     let periodoRango = leerLS(CLAVES.RANGO, null);
+    // { actualizado_en: ISO del recálculo en el servidor, pendiente: bool, bajado_en: ms del celular }
+    let statsInfo = leerLS(CLAVES.STATS_INFO, null);
+    let cargandoStats = false;
     let volverAPorRegistrar = false;   // la lista se abrió desde "Por registrar"
     let estadoActualClase = [];
     let claseCargada = '';          // fecha|grupo|asignatura de la lista en pantalla
@@ -408,7 +423,7 @@
         btn.textContent = 'Verificando...';
         msg.textContent = '';
         try {
-            const data = await llamarAPI({ accion: 'leer', codigo: nuevoCodigo });
+            const data = await llamarAPI({ accion: 'leer', codigo: nuevoCodigo, ligero: true });
             if (!data.ok) {
                 throw new Error(data.codigo === 'NO_AUTORIZADO'
                     ? 'Código inválido o revocado. Revíselo o pida uno nuevo a coordinación.'
@@ -484,7 +499,16 @@
 
     function aplicarDatosServidor(data) {
         db = data.estudiantes;
-        resumen = Array.isArray(data.resumen) ? data.resumen : [];
+        // Desde 3.3 bajar listas NO trae el resumen: se conserva el que ya había y
+        // se pide aparte al abrir Estadísticas.
+        if (Array.isArray(data.resumen)) resumen = data.resumen;
+        // Pero si en este celular se activó OTRO docente, lo guardado no es suyo: se borra.
+        const otroDocente = !docente || !data.docente || docente.id !== data.docente.id;
+        if (otroDocente && !Array.isArray(data.resumen)) {
+            resumen = [];
+            statsInfo = null;
+            localStorage.removeItem(CLAVES.STATS_INFO);
+        }
         programacion = Array.isArray(data.programacion) ? data.programacion : [];
         if (data.umbrales) umbrales = data.umbrales;
         fichas = (data.fichas && typeof data.fichas === 'object') ? data.fichas : {};
@@ -528,7 +552,10 @@
         if (currentTab === 'Apartadas') { renderApartadas(); renderDiagnostico(); }
         else if (currentTab === 'PorRegistrar') renderPorRegistrar();
         else if (enAsistencia) renderList();
-        else renderEstadisticas();
+        else {
+            renderEstadisticas();
+            if (statsViejas()) cargarEstadisticas(false);     // en segundo plano; no bloquea nada
+        }
         actualizarContadorPorRegistrar();
     }
 
@@ -891,6 +918,8 @@
             }
         });
         guardarLS(CLAVES.SESIONES, sesionesRecientes);
+        // Llegaron listas nuevas: las estadísticas guardadas ya no están al día.
+        if (statsInfo) { statsInfo.bajado_en = 0; guardarLS(CLAVES.STATS_INFO, statsInfo); }
     }
 
     function guardarClaseLocal() {
@@ -977,7 +1006,65 @@
     /* ════════════════════════════════════════════════════════════════════
      *  8. ESTADÍSTICAS
      * ══════════════════════════════════════════════════════════════════ */
+    /** ¿Hay que volver a pedir las estadísticas? Nunca pedidas, o bajadas hace más de MINUTOS_STATS. */
+    function statsViejas() {
+        if (!codigo || cargandoStats) return false;
+        if (!statsInfo || !statsInfo.bajado_en) return true;
+        return Date.now() - statsInfo.bajado_en > MINUTOS_STATS * 60000;
+    }
+
+    const horaCorta = iso => {
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const dos = n => String(n).padStart(2, '0');
+        const hoy = fechaLocalISO() === fechaLocalISO(d);
+        return (hoy ? 'hoy ' : `${dos(d.getDate())}/${dos(d.getMonth() + 1)} `) + `${dos(d.getHours())}:${dos(d.getMinutes())}`;
+    };
+
+    /** La línea que dice qué tan frescas son las cifras. */
+    function pintarEstadoStats(texto) {
+        const lbl = document.getElementById('statsHora');
+        const btn = document.getElementById('btnStats');
+        btn.disabled = cargandoStats;
+        btn.textContent = cargandoStats ? 'Cargando…' : '🔄 Actualizar';
+        if (texto) { lbl.textContent = texto; return; }
+        if (!statsInfo) { lbl.textContent = 'Estadísticas sin cargar.'; return; }
+        const hora = statsInfo.actualizado_en ? horaCorta(statsInfo.actualizado_en) : '';
+        lbl.textContent = (hora ? `Cifras calculadas ${hora}.` : 'Cifras aún sin calcular.') +
+            (statsInfo.pendiente ? ` Hay listas recibidas que se suman en máx. ${statsInfo.minutos || 10} min.` : '');
+    }
+
+    /**
+     * Pide las estadísticas al servidor. Solo se llama desde esta pestaña: tomar
+     * lista y enviarla no dependen de esto. Si no hay red, se quedan las guardadas.
+     */
+    async function cargarEstadisticas(manual) {
+        if (!codigo || cargandoStats) return;
+        cargandoStats = true;
+        pintarEstadoStats();
+        try {
+            const data = await llamarAPI({ accion: 'estadisticas', codigo });
+            if (data.codigo === 'NO_AUTORIZADO') throw new Error('CODIGO_REVOCADO');
+            if (!data.ok || !Array.isArray(data.resumen)) throw new Error(data.error || 'RESPUESTA_INVALIDA');
+            resumen = data.resumen;
+            if (data.umbrales) umbrales = data.umbrales;
+            statsInfo = { actualizado_en: data.actualizado_en || '', pendiente: !!data.pendiente,
+                          minutos: data.minutos_recalculo || 10, bajado_en: Date.now() };
+            guardarLS(CLAVES.RESUMEN, resumen);
+            guardarLS(CLAVES.STATS_INFO, statsInfo);
+            cargandoStats = false;
+            pintarEstadoStats();
+            if (currentTab === 'Estadisticas') renderEstadisticas();
+        } catch (err) {
+            cargandoStats = false;
+            const guardadas = statsInfo && statsInfo.actualizado_en ? ` Se muestran las del ${horaCorta(statsInfo.actualizado_en)}.` : '';
+            pintarEstadoStats('Sin conexión con el colegio.' + guardadas);
+            if (manual) alert('❌ No se pudieron actualizar las estadísticas.\n' + explicarError(err));
+        }
+    }
+
     function renderEstadisticas() {
+        pintarEstadoStats();
         const container = document.getElementById('statsContainer');
         const grupo = grupoActual;
 
@@ -988,7 +1075,8 @@
         if (propias.length === 0) {
             return mostrarMensaje(container, reemplazoDe(grupo)
                 ? 'Grupo en reemplazo: las estadísticas las ven el docente titular y coordinación.'
-                : 'Aún no hay clases sincronizadas de esta asignatura. Pulse "1. Bajar Listas y Datos".');
+                : (cargandoStats ? 'Cargando estadísticas…'
+                   : 'Aún no hay clases contadas de esta asignatura. Si ya envió listas, pulse 🔄 Actualizar en unos minutos.'));
         }
 
         const porId = new Map(propias.map(r => [aTexto(r.id), r]));
@@ -1320,13 +1408,16 @@
         btn.textContent = 'Descargando...';
         let revocado = false;
         try {
-            const data = await llamarAPI({ accion: 'leer', codigo });
+            const data = await llamarAPI({ accion: 'leer', codigo, ligero: true });
             if (data.codigo === 'NO_AUTORIZADO') { revocado = true; throw new Error('CODIGO_REVOCADO'); }
             if (!data.ok) throw new Error(data.error || 'Error del servidor al leer datos.');
             if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
             if (!Array.isArray(data.estudiantes)) throw new Error('RESPUESTA_INVALIDA');
 
             const aviso = aplicarDatosServidor(data);
+            // Quien pulsa "Bajar" espera todo al día: la próxima vez que abra
+            // Estadísticas se vuelven a pedir (no ahora, para que bajar siga siendo rápido).
+            if (statsInfo) { statsInfo.bajado_en = 0; guardarLS(CLAVES.STATS_INFO, statsInfo); }
             document.getElementById('lblDocente').textContent = docente.nombre;
             alert(`✅ Datos actualizados:\n${db.length} estudiantes y ${programacion.length} asignatura(s) a su cargo.` +
               `${resumenReemplazos()}${aviso}`);
