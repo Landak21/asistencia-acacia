@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v3.3.0 (Tomar lista rápido)         ║
+  ║  ASISTENCIA ACACIA II · Frontend v3.4.0 (Tras la auditoría)          ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V3.3_20260929                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V3.4_20260929                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -33,7 +33,7 @@
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '3.3.0'
+            VERSION_APP: '3.4.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -1044,7 +1044,7 @@
         pintarEstadoStats();
         try {
             const data = await llamarAPI({ accion: 'estadisticas', codigo });
-            if (data.codigo === 'NO_AUTORIZADO') throw new Error('CODIGO_REVOCADO');
+            if (data.codigo === 'NO_AUTORIZADO') { borrarDatosDeEstudiantes(); throw new Error('CODIGO_REVOCADO'); }
             if (!data.ok || !Array.isArray(data.resumen)) throw new Error(data.error || 'RESPUESTA_INVALIDA');
             resumen = data.resumen;
             if (data.umbrales) umbrales = data.umbrales;
@@ -1300,6 +1300,18 @@
     }
 
     // Todo viaja por POST con text/plain: sin verificación CORS previa y el código nunca queda en una URL
+    /**
+     * Código revocado: se borran del celular los datos de estudiantes (nombres,
+     * documentos, estadísticas y copias de listas enviadas). Se CONSERVAN las
+     * clases sin enviar y la identidad del docente, para que salgan en cuanto
+     * active un código nuevo.
+     */
+    function borrarDatosDeEstudiantes() {
+        [CLAVES.ESTUDIANTES, CLAVES.RESUMEN, CLAVES.FICHAS, CLAVES.STATS_INFO, CLAVES.ENVIADAS]
+            .forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+        db = []; resumen = []; fichas = {}; statsInfo = null;
+    }
+
     async function llamarAPI(cuerpo) {
         let resp;
         try {
@@ -1317,7 +1329,12 @@
             return JSON.parse(texto);
         } catch (_) {
             // La respuesta no es la nuestra. Se guarda evidencia: sin ella solo se puede especular.
-            const err = new Error('RESPUESTA_INVALIDA');
+            // Si Google devolvió su página de inicio de sesión, el problema no es la red:
+            // la publicación del servidor quedó con un acceso distinto de "Cualquier usuario".
+            // Decir "su clase sí llegó" sería falso: no llegó y hay que avisar.
+            const esLogin = /accounts\.google\.com|ServiceLogin/i.test(resp.url || '') ||
+                            /accounts\.google\.com\/(ServiceLogin|v3\/signin|signin)/i.test(texto);
+            const err = new Error(esLogin ? 'SERVIDOR_SIN_ACCESO' : 'RESPUESTA_INVALIDA');
             let tipo = '';
             try { tipo = resp.headers.get('content-type') || ''; } catch (_e) {}
             err.diagnostico = {
@@ -1396,6 +1413,8 @@
                 'Lo más probable es que su clase SÍ haya llegado. Pulse "2. Sincronizar" de nuevo en unos minutos: ' +
                 'la app lo verificará y NO duplicará nada.\nSi el aviso se repite todo el día, avise a coordinación.';
             case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación.';
+            case 'SERVIDOR_SIN_ACCESO': return 'El servidor del colegio no está abierto a la app (la publicación quedó con un acceso equivocado).\n' +
+                'Su lista NO se perdió: sigue guardada en el celular. Avise a coordinación y sincronice cuando lo corrijan.';
             case 'CODIGO_REVOCADO': return 'Su código fue revocado o cambiado. Las clases pendientes siguen guardadas: active el código nuevo para enviarlas.';
             default: return err.message;
         }
@@ -1409,7 +1428,7 @@
         let revocado = false;
         try {
             const data = await llamarAPI({ accion: 'leer', codigo, ligero: true });
-            if (data.codigo === 'NO_AUTORIZADO') { revocado = true; throw new Error('CODIGO_REVOCADO'); }
+            if (data.codigo === 'NO_AUTORIZADO') { revocado = true; borrarDatosDeEstudiantes(); throw new Error('CODIGO_REVOCADO'); }
             if (!data.ok) throw new Error(data.error || 'Error del servidor al leer datos.');
             if (!versionCompatible(data.version, CONFIG.VERSION_API_REQUERIDA)) throw new Error('SERVIDOR_VIEJO');
             if (!Array.isArray(data.estudiantes)) throw new Error('RESPUESTA_INVALIDA');
@@ -1464,7 +1483,7 @@
                 const sesiones = lotes[n].map(({ docente_id, creado_en, ...resto }) => resto);
                 const data = await llamarAPI({ accion: 'escribir', codigo, version: 2, sesiones });
 
-                if (data.codigo === 'NO_AUTORIZADO') throw new Error('CODIGO_REVOCADO');
+                if (data.codigo === 'NO_AUTORIZADO') { borrarDatosDeEstudiantes(); throw new Error('CODIGO_REVOCADO'); }
                 if (!data.ok) {
                     throw new Error(data.codigo === 'SERVIDOR_OCUPADO'
                         ? 'Otro docente está sincronizando en este momento. Intente de nuevo en un minuto.'
