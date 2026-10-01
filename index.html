@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v3.4.0 (Tras la auditoría)          ║
+  ║  ASISTENCIA ACACIA II · Frontend v3.5.0 (Asistencia + Notas)         ║
   ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V3.4_20260929                          ║
+  ║  Código: MEDIA-ASISTENCIA-APP_V3.5_20261001                          ║
   ║                                                                      ║
   ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
   ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
@@ -33,7 +33,11 @@
             // 4) Clases enviadas por petición (lotes pequeños = menos fallos con Wi-Fi débil).
             SESIONES_POR_ENVIO: 10,
 
-            VERSION_APP: '3.4.0'
+            // 5) Versión mínima del servidor para la pestaña Notas. No modificar.
+            //    La asistencia sigue funcionando con un servidor más viejo.
+            VERSION_API_NOTAS: '3.14.0',
+
+            VERSION_APP: '3.5.0'
         });
     </script>
     <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
@@ -128,6 +132,34 @@
         .badge-pendientes { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
         .mensaje-vacio { text-align: center; padding: 20px; color: #666; }
 
+        /* Notas */
+        .notas-barra { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+        .notas-ventana { flex: 1; white-space: pre-line; padding: 9px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35; }
+        .notas-ventana.abierta { background: #d4edda; color: #155724; }
+        .notas-ventana.cerrada { background: #fff3cd; color: #856404; }
+        #btnNotasBajar { border: none; background: #1d4f7a; color: #fff; border-radius: 6px; padding: 8px 10px; font-size: 12px; flex-shrink: 0; }
+        #notasCursoSelector { width: 100%; margin-bottom: 10px; border: 1px solid #ccc; font-size: 15px; }
+        .notas-resumen { font-size: 12px; color: #555; margin-bottom: 8px; text-align: center; }
+        .notas-aviso { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; font-size: 14px; }
+        .nota-card { background: #fff; border-left: 5px solid #ced4da; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .nota-card.pendiente { border-left-color: #ffc107; }
+        .nota-card.rechazada { border-left-color: #dc3545; background: #fff5f5; }
+        .nota-card.bloqueada { border-left-color: #6c757d; background: #f1f3f5; }
+        .nota-fila { display: flex; align-items: center; gap: 8px; }
+        .nota-nombre { flex: 1; min-width: 0; font-weight: bold; font-size: 14px; overflow-wrap: anywhere; }
+        .nota-input { width: 64px; flex: 0 0 64px; font-size: 18px; text-align: center; padding: 6px; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; }
+        .nota-input.mala { border-color: #dc3545; background: #fff0f0; }
+        .nota-input:disabled { background: #e9ecef; color: #333; }
+        .nota-desemp { flex: 0 0 62px; font-size: 11px; font-weight: bold; text-align: center; color: #666; }
+        .d-Bajo { color: #c0392b; } .d-Basico { color: #b9770e; } .d-Alto { color: #1d4f7a; } .d-Superior { color: #1e8449; }
+        .nota-obs { margin-top: 6px; font-size: 13px; }
+        .nota-obs summary { color: #1d4f7a; cursor: pointer; padding: 2px 0; }
+        .nota-frase, .nota-texto { display: block; width: 100%; max-width: 100%; margin-top: 6px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; box-sizing: border-box; }
+        .nota-texto { padding: 6px; font-family: inherit; resize: vertical; }
+        .nota-msg { font-size: 12px; margin-top: 4px; color: #856404; }
+        .nota-card.rechazada .nota-msg { color: #721c24; font-weight: bold; }
+        .nota-card.bloqueada .nota-msg { color: #495057; }
+        #btnEnviarNotas:disabled { background: #8fbf9a; }
         .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
@@ -220,6 +252,17 @@
             <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
         </div>
 
+        <!-- VISTA 4: NOTAS DEL PERIODO (servidor 3.14+) -->
+        <div id="viewNotas" class="view-container">
+            <div class="notas-barra">
+                <div id="notasVentana" class="notas-ventana cerrada">Pulse "Bajar notas".</div>
+                <button id="btnNotasBajar" onclick="cargarNotas(true)">🔄 Bajar notas</button>
+            </div>
+            <select id="notasCursoSelector" onchange="alCambiarCursoNotas()" style="display:none;"></select>
+            <div id="notasContainer"></div>
+            <div class="autor-creditos">Elaborado por ELIOT MANRIQUE · v<span class="lblVersion"></span></div>
+        </div>
+
         <!-- VISTA 3: CLASES APARTADAS POR EL SERVIDOR -->
         <div id="viewApartadas" class="view-container">
             <div id="introApartadas" style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #856404;">
@@ -234,10 +277,14 @@
             <div class="fab-container" id="fabSave">
                 <button class="btn-save" id="btnGuardar" onclick="guardarClaseLocal()">💾 Guardar Clase en Celular</button>
             </div>
+            <div class="fab-container" id="fabNotas" style="display:none;">
+                <button class="btn-save" id="btnEnviarNotas" onclick="enviarNotas()" disabled>✔ Nada por enviar en este curso</button>
+            </div>
             <div class="bottom-nav">
                 <div class="nav-item nav-active" id="tabAsistencia" onclick="cambiarPestana('Asistencia')">📝 Tomar Lista</div>
                 <div class="nav-item" id="tabPorRegistrar" onclick="cambiarPestana('PorRegistrar')">📋 Por registrar</div>
                 <div class="nav-item" id="tabStats" onclick="cambiarPestana('Estadisticas')">📊 Estadísticas</div>
+                <div class="nav-item" id="tabNotas" onclick="cambiarPestana('Notas')">🎓 Notas</div>
             </div>
         </div>
     </div>
@@ -266,7 +313,9 @@
         // cargados. Se conserva DIAS_ENVIADAS días y se borra sola.
         ENVIADAS: 'acacia_enviadas',
         // Cuándo se calcularon las estadísticas guardadas y cuándo se bajaron.
-        STATS_INFO: 'acacia_stats_info'
+        STATS_INFO: 'acacia_stats_info',
+        // Notas escritas y aún no enviadas: documento → nota/frases/texto. SIN nombres.
+        NOTAS_BORRADOR: 'acacia_notas_borrador'
     });
     // Si las estadísticas guardadas tienen más de esto, se vuelven a pedir al abrir la pestaña.
     const MINUTOS_STATS = 10;
@@ -444,6 +493,7 @@
 
             estadoActualClase = [];
             grupoActual = '';
+            notasDatos = null; notasRechazos = {};     // otro docente puede activar en este celular
             input.value = '';
             mostrarApp();
             alert(`✅ App activada para ${docente.nombre}.\n` +
@@ -542,13 +592,27 @@
         document.getElementById('viewAsistencia').classList.toggle('view-active', tabName === 'Asistencia');
         document.getElementById('viewEstadisticas').classList.toggle('view-active', tabName === 'Estadisticas');
         document.getElementById('viewApartadas').classList.toggle('view-active', tabName === 'Apartadas');
+        document.getElementById('tabNotas').className = 'nav-item' + (tabName === 'Notas' ? ' nav-active' : '');
+        document.getElementById('viewNotas').classList.toggle('view-active', tabName === 'Notas');
         renderActiveView();
     }
 
     function renderActiveView() {
         const enAsistencia = currentTab === 'Asistencia';
+        const enNotas = currentTab === 'Notas';
         document.getElementById('fabSave').style.display = enAsistencia ? 'flex' : 'none';
+        document.getElementById('fabNotas').style.display = enNotas ? 'flex' : 'none';
+        // Los controles de asistencia (grupo, fecha, bajar/sincronizar) no aplican a Notas
+        document.querySelector('.cloud-controls').style.display = enNotas ? 'none' : '';
+        document.querySelectorAll('header .header-controls').forEach(h => { h.style.display = enNotas ? 'none' : ''; });
         actualizarBannerApartadas();
+        actualizarTabNotas();
+        if (enNotas) {
+            renderNotas();
+            if (!notasDatos && !notasCargando) cargarNotas(false);
+            actualizarContadorPorRegistrar();
+            return;
+        }
         if (currentTab === 'Apartadas') { renderApartadas(); renderDiagnostico(); }
         else if (currentTab === 'PorRegistrar') renderPorRegistrar();
         else if (enAsistencia) renderList();
@@ -1310,6 +1374,9 @@
         [CLAVES.ESTUDIANTES, CLAVES.RESUMEN, CLAVES.FICHAS, CLAVES.STATS_INFO, CLAVES.ENVIADAS]
             .forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
         db = []; resumen = []; fichas = {}; statsInfo = null;
+        // Notas: la lista (con nombres) se borra. Las notas sin enviar (sin nombres) se conservan,
+        // igual que las clases pendientes, y salen cuando active el código nuevo.
+        notasDatos = null; notasRechazos = {};
     }
 
     async function llamarAPI(cuerpo) {
@@ -1405,6 +1472,458 @@
         return null;
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+     *  9. NOTAS DEL PERIODO (v3.5 · requiere servidor 3.14.0)
+     *  - La lista (con nombres) vive SOLO en memoria: se pide al abrir la pestaña.
+     *  - Lo que el docente escribe y aún no envía se guarda en el celular SIN
+     *    nombres (documento → nota, frases, texto), separado por docente, para
+     *    no perderlo si se cae la señal o si otro docente usa el mismo celular.
+     *    Sale del celular cuando el servidor lo confirma.
+     *  - El servidor decide todo: ventana de captura, cursos, frases válidas.
+     * ══════════════════════════════════════════════════════════════════ */
+    let notasDatos = null;          // respuesta de 'notas_leer'
+    let notasCurso = '';            // idAsig o grupo|asignatura elegido
+    let notasCargando = false;
+    let notasEnviando = false;
+    let notasError = '';
+    let notasRechazos = {};         // idAsig → { documento: motivo } del último envío
+    let notasPeticion = 0;          // cada 'notas_leer' lleva un número; solo vale la respuesta más reciente
+    // { docentes: { 'DOC-001': { idAsig: { documento: { nota, obs, texto } } } } }
+    let notasBorrador = leerLS(CLAVES.NOTAS_BORRADOR, null);
+    if (!notasBorrador || typeof notasBorrador !== 'object' || typeof notasBorrador.docentes !== 'object' || !notasBorrador.docentes) notasBorrador = { docentes: {} };
+    const NOTAS_POR_ENVIO = 50;
+
+    /** "4,5" "4.5" "4" "3,75" → valor; "45" → sugerir 4,5; "375" → sugerir 3,75. Trabaja en centésimas. */
+    function interpretarNota(texto) {
+        const t = aTexto(texto).replace(',', '.');
+        if (t === '') return { estado: 'vacia' };
+        const enRango = c => c >= 100 && c <= 500;
+        if (/^\d{2}$/.test(t) && enRango(Number(t) * 10)) return { estado: 'sugerir', c: Number(t) * 10 };
+        if (/^\d{3}$/.test(t) && enRango(Number(t))) return { estado: 'sugerir', c: Number(t) };
+        if (/^\d(\.\d{0,2})?$/.test(t)) {
+            const c = Math.round(Number(t) * 100);
+            return enRango(c) ? { estado: 'ok', c } : { estado: 'invalida' };
+        }
+        return { estado: 'invalida' };
+    }
+
+    function centesimas(v) {
+        if (v === '' || v === null || v === undefined) return null;
+        const x = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+        return isFinite(x) ? Math.round(x * 100) : null;
+    }
+
+    function formatoNota(c) {
+        if (c === null) return '';
+        return (c % 10 === 0 ? (c / 100).toFixed(1) : (c / 100).toFixed(2)).replace('.', ',');
+    }
+
+    // Escala nacional (Decreto 1290) que usa el SIE.
+    function desempeno(c) {
+        if (c === null) return '';
+        return c < 300 ? 'Bajo' : c < 400 ? 'Básico' : c < 460 ? 'Alto' : 'Superior';
+    }
+
+    function guardarBorrador() {
+        Object.keys(notasBorrador.docentes).forEach(k => { if (!Object.keys(notasBorrador.docentes[k]).length) delete notasBorrador.docentes[k]; });
+        if (!guardarLS(CLAVES.NOTAS_BORRADOR, notasBorrador)) alert('La memoria del celular está llena: lo último que escribió puede no quedar guardado. Envíe sus notas ahora.');
+    }
+
+    /** Borradores del docente activo (los de otro docente no se ven ni se tocan). */
+    function cursosBorrador() {
+        const id = docente ? docente.id : '';
+        return notasBorrador.docentes[id] = notasBorrador.docentes[id] || {};
+    }
+
+    function borradorDe(idAsig) {
+        return cursosBorrador()[idAsig] || {};
+    }
+
+    const limpiarTexto = t => aTexto(t).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+    function cursoActualNotas() {
+        if (!notasDatos) return null;
+        return notasDatos.cursos.find(c => claveCurso(c) === notasCurso) || null;
+    }
+
+    const claveCurso = c => c.idAsig || (c.grupo + '|' + c.asignatura);
+
+    /** Valores que se ven en pantalla: borrador si lo hay, si no lo del servidor. */
+    function valoresEstudiante(curso, est) {
+        const b = borradorDe(curso.idAsig)[est.id];
+        if (b) return { nota: aTexto(b.nota), obs: Array.isArray(b.obs) ? b.obs.slice() : [], texto: String(b.texto || ''), borrador: true };
+        const c = centesimas(est.nota);
+        return { nota: formatoNota(c), obs: (est.obs || []).slice(), texto: est.texto || '', borrador: false };
+    }
+
+    function igualAlServidor(est, v) {
+        const p = interpretarNota(v.nota);
+        const c = p.estado === 'ok' ? p.c : (p.estado === 'vacia' ? null : NaN);
+        return c === centesimas(est.nota) && (v.obs || []).join(',') === (est.obs || []).join(',') && limpiarTexto(v.texto) === limpiarTexto(est.texto);
+    }
+
+    function pendientesDe(curso) {
+        if (!curso || !curso.idAsig) return [];
+        const b = borradorDe(curso.idAsig);
+        return curso.estudiantes.filter(e => e.id && b[e.id] && !e.bloqueada);
+    }
+
+    function totalPendientesNotas() {
+        return Object.values(cursosBorrador()).reduce((s, c) => s + Object.keys(c).length, 0);
+    }
+
+    function actualizarTabNotas() {
+        const n = totalPendientesNotas();
+        document.getElementById('tabNotas').textContent = '🎓 Notas' + (n ? ` (${n})` : '');
+    }
+
+    /** Escribe en el borrador lo que hay en la tarjeta. Si queda igual al servidor, se quita. */
+    function registrarCambio(curso, est, cambio) {
+        const v = valoresEstudiante(curso, est);
+        Object.assign(v, cambio);
+        const cursos = cursosBorrador();
+        const delCurso = cursos[curso.idAsig] = cursos[curso.idAsig] || {};
+        if (igualAlServidor(est, v)) delete delCurso[est.id];
+        else delCurso[est.id] = { nota: aTexto(v.nota), obs: v.obs, texto: String(v.texto || '').slice(0, 300) };
+        if (Object.keys(delCurso).length === 0) delete cursos[curso.idAsig];
+        if (notasRechazos[curso.idAsig]) delete notasRechazos[curso.idAsig][est.id];
+        guardarBorrador();
+    }
+
+    async function cargarNotas(manual) {
+        if (notasCargando) return;
+        if (!codigo || !docente) return mostrarActivacion('');
+        notasCargando = true;
+        notasError = '';
+        const btn = document.getElementById('btnNotasBajar');
+        if (btn) { btn.disabled = true; btn.textContent = 'Bajando...'; }
+        if (!notasDatos) renderNotas(); else actualizarBotonNotas(cursoActualNotas());
+        let revocado = false;
+        const turno = ++notasPeticion, codigoPedido = codigo;
+        try {
+            const data = await llamarAPI({ accion: 'notas_leer', codigo, version: 3 });
+            // Si mientras tanto se activó otro código, esta respuesta es de otra persona: se descarta
+            if (turno !== notasPeticion || codigoPedido !== codigo) return;
+            if (data.codigo === 'NO_AUTORIZADO') { revocado = true; borrarDatosDeEstudiantes(); throw new Error('CODIGO_REVOCADO'); }
+            // Un servidor anterior a 3.14 no conoce la acción y responde "Acción desconocida".
+            if (data.codigo === 'PAYLOAD_INVALIDO' || !versionCompatible(data.version, CONFIG.VERSION_API_NOTAS)) throw new Error('SERVIDOR_VIEJO_NOTAS');
+            if (!data.ok) throw new Error(data.error || 'El servidor no pudo leer las notas.');
+            if (!Array.isArray(data.cursos) || !data.ventana) throw new Error('RESPUESTA_INVALIDA');
+            if (!Array.isArray(data.banco)) data.banco = [];
+            data.cursos.forEach(c => {
+                if (!Array.isArray(c.estudiantes)) c.estudiantes = [];
+                c.estudiantes.forEach(e => { e.id = aTexto(e.id); if (!Array.isArray(e.obs)) e.obs = []; });
+            });
+            notasDatos = data;
+            if (!cursoActualNotas()) {
+                const conCatalogo = data.cursos.find(c => c.idAsig);
+                notasCurso = conCatalogo ? claveCurso(conCatalogo) : (data.cursos[0] ? claveCurso(data.cursos[0]) : '');
+            }
+            limpiarBorradorObsoleto();
+        } catch (err) {
+            if (turno !== notasPeticion || codigoPedido !== codigo) return;
+            notasError = explicarError(err);
+            if (manual || revocado) alert(notasError);
+            if (revocado) mostrarActivacion(notasError);
+        } finally {
+            if (turno === notasPeticion) notasCargando = false;
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 Bajar notas'; }
+            if (currentTab === 'Notas') renderNotas();
+            actualizarTabNotas();
+        }
+    }
+
+    /** Si el servidor ya tiene lo mismo que el borrador (p. ej. lo envió desde otro celular), el borrador sobra. */
+    function limpiarBorradorObsoleto() {
+        if (!notasDatos) return;
+        let cambio = false;
+        const cursos = cursosBorrador();
+        notasDatos.cursos.forEach(curso => {
+            const b = cursos[curso.idAsig];
+            if (!curso.idAsig || !b) return;
+            curso.estudiantes.forEach(est => {
+                if (b[est.id] && (est.bloqueada || igualAlServidor(est, b[est.id]))) { delete b[est.id]; cambio = true; }
+            });
+            if (Object.keys(b).length === 0) { delete cursos[curso.idAsig]; cambio = true; }
+        });
+        if (cambio) guardarBorrador();
+    }
+
+    function fechaNotas(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aTexto(iso));
+        return m ? `${m[3]}/${m[2]}` : aTexto(iso);
+    }
+
+    function textoVentana(d) {
+        const v = d.ventana;
+        if (!v.desde || !v.hasta) return { clase: 'cerrada', txt: '⚠️ Coordinación todavía no definió las fechas de captura de notas.' };
+        const rango = `del ${fechaNotas(v.desde)} al ${fechaNotas(v.hasta)}`;
+        if (v.abierta) return { clase: 'abierta', txt: `🟢 Captura de notas abierta ${rango} · periodo ${d.periodo}` };
+        const extra = d.coordinacion ? ' Como coordinación, usted sí puede registrar.' : '';
+        if (v.hoy < v.desde) return { clase: 'cerrada', txt: `⏳ La captura de notas abre el ${fechaNotas(v.desde)} (hasta el ${fechaNotas(v.hasta)}).${extra}` };
+        return { clase: 'cerrada', txt: `🔒 La captura de notas se cerró (fue ${rango}). Puede ver sus notas; para cambios, coordinación.${extra}` };
+    }
+
+    function el(tag, clase, texto) {
+        const e = document.createElement(tag);
+        if (clase) e.className = clase;
+        if (texto !== undefined) e.textContent = texto;
+        return e;
+    }
+
+    function renderNotas() {
+        const cont = document.getElementById('notasContainer');
+        const estado = document.getElementById('notasVentana');
+        const selector = document.getElementById('notasCursoSelector');
+        cont.textContent = '';
+        actualizarTabNotas();
+        if (!notasDatos) {
+            estado.className = 'notas-ventana cerrada';
+            estado.textContent = notasCargando ? 'Bajando sus cursos y notas...' : (notasError || 'Pulse "Bajar notas".');
+            selector.style.display = 'none';
+            const n = totalPendientesNotas();
+            if (n && !notasCargando) cont.appendChild(el('div', 'mensaje-vacio', `Tiene ${n} nota(s) sin enviar guardadas en el celular. Se mostrarán al bajar la lista (necesita internet).`));
+            actualizarBotonNotas(null);
+            return;
+        }
+        const v = textoVentana(notasDatos);
+        estado.className = 'notas-ventana ' + v.clase;
+        estado.textContent = v.txt + (notasError ? '\n' + notasError : '');
+
+        selector.style.display = notasDatos.cursos.length ? 'block' : 'none';
+        selector.textContent = '';
+        notasDatos.cursos.forEach(c => {
+            const n = pendientesDe(c).length;
+            const op = el('option', '', `${c.grupo} · ${c.asignatura}${c.idAsig ? '' : ' (sin catálogo)'}${n ? ` · ${n} sin enviar` : ''}`);
+            op.value = claveCurso(c);
+            selector.appendChild(op);
+        });
+        selector.value = notasCurso;
+
+        const curso = cursoActualNotas();
+        if (!curso) {
+            cont.appendChild(el('div', 'mensaje-vacio', 'No tiene asignaturas a cargo en el periodo ' + notasDatos.periodo + '.'));
+            actualizarBotonNotas(null);
+            return;
+        }
+        if (!curso.idAsig) {
+            cont.appendChild(el('div', 'notas-aviso', 'Esta asignatura no está en el catálogo de notas del periodo (hoja ASIGNATURAS). Avise a coordinación: hasta entonces no se puede calificar.'));
+            actualizarBotonNotas(null);
+            return;
+        }
+        const conNota = curso.estudiantes.filter(e => centesimas(e.nota) !== null).length;
+        cont.appendChild(el('div', 'notas-resumen', `Ficha ${curso.ficha || '—'} · ${curso.estudiantes.length} estudiantes · ${conNota} con nota en el servidor`));
+        if (curso.estudiantes.length === 0) cont.appendChild(el('div', 'mensaje-vacio', 'El grupo no tiene estudiantes activos.'));
+        curso.estudiantes.forEach(est => cont.appendChild(tarjetaNota(curso, est)));
+        actualizarBotonNotas(curso);
+    }
+
+    function tarjetaNota(curso, est) {
+        const v = valoresEstudiante(curso, est);
+        const card = el('div', 'nota-card');
+        card.dataset.doc = est.id;
+        const fila = el('div', 'nota-fila');
+        fila.appendChild(el('span', 'nota-nombre', est.nombre));
+        const input = el('input', 'nota-input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.autocomplete = 'off';
+        input.maxLength = 4;
+        input.placeholder = '—';
+        input.value = v.nota;
+        input.setAttribute('aria-label', 'Nota de ' + est.nombre);
+        const etiqueta = el('span', 'nota-desemp');
+        fila.appendChild(input);
+        fila.appendChild(etiqueta);
+        card.appendChild(fila);
+
+        const repetido = curso.estudiantes.filter(e => e.id === est.id).length > 1;
+        const sinDocumento = !est.id || repetido;
+        const soloLectura = !curso.editable || est.bloqueada || sinDocumento || notasEnviando;
+        input.disabled = soloLectura;
+
+        // Observaciones: hasta 3 frases del banco + texto propio
+        const det = el('details', 'nota-obs');
+        const resumenObs = el('summary', '', '');
+        det.appendChild(resumenObs);
+        const selects = [];
+        for (let i = 0; i < 3; i++) {
+            const s = el('select', 'nota-frase');
+            s.appendChild(Object.assign(el('option', '', `Frase ${i + 1} (opcional)`), { value: '' }));
+            const porCat = {};
+            notasDatos.banco.forEach(b => { (porCat[b.categoria || 'Otras'] = porCat[b.categoria || 'Otras'] || []).push(b); });
+            Object.keys(porCat).forEach(cat => {
+                const g = document.createElement('optgroup');
+                g.label = cat;
+                porCat[cat].forEach(b => {
+                    const o = el('option', '', (b.tipo ? b.tipo + ': ' : '') + b.texto);
+                    o.value = b.codigo;
+                    g.appendChild(o);
+                });
+                s.appendChild(g);
+            });
+            // Frase que ya no está en el banco: se muestra para no perderla de vista
+            if (v.obs[i] && !notasDatos.banco.some(b => b.codigo === v.obs[i])) {
+                s.appendChild(Object.assign(el('option', '', v.obs[i] + ' (retirada del banco)'), { value: v.obs[i] }));
+            }
+            s.value = v.obs[i] || '';
+            s.disabled = soloLectura;
+            selects.push(s);
+            det.appendChild(s);
+        }
+        const area = el('textarea', 'nota-texto');
+        area.maxLength = 300;
+        area.rows = 2;
+        area.placeholder = 'Observación propia (opcional, máx. 300). Sin datos de salud, familia ni disciplina.';
+        area.value = v.texto;
+        area.disabled = soloLectura;
+        det.appendChild(area);
+        card.appendChild(det);
+        const msg = el('div', 'nota-msg');
+        card.appendChild(msg);
+
+        const pintar = () => {
+            const val = valoresEstudiante(curso, est);
+            const p = interpretarNota(input.value);
+            const c = p.estado === 'ok' ? p.c : null;
+            etiqueta.textContent = p.estado === 'invalida' ? '✖' : p.estado === 'sugerir' ? '¿?' : desempeno(c) + (c !== null && c < 350 ? ' · no aprueba' : '');
+            etiqueta.className = 'nota-desemp' + (c !== null ? (c < 350 ? ' d-Bajo' : ' d-' + desempeno(c).normalize('NFD').replace(/[̀-ͯ]/g, '')) : '');
+            input.classList.toggle('mala', p.estado === 'invalida' || p.estado === 'sugerir');
+            const nObs = val.obs.length + (aTexto(val.texto) ? 1 : 0);
+            resumenObs.textContent = nObs ? `Observaciones (${val.obs.length} frase(s)${aTexto(val.texto) ? ' + texto' : ''})` : 'Observaciones (opcional)';
+            const motivo = (notasRechazos[curso.idAsig] || {})[est.id];
+            card.classList.toggle('pendiente', val.borrador);
+            card.classList.toggle('rechazada', !!motivo);
+            card.classList.toggle('bloqueada', !!est.bloqueada);
+            if (sinDocumento) msg.textContent = '⚠️ ' + (est.id ? 'Documento repetido en la lista' : 'Sin documento en la base') + ': no se puede calificar. Avise a coordinación.';
+            else if (est.bloqueada) msg.textContent = '🔒 ' + (est.fuente === 'CORRECCION' ? 'Corregida o recuperada por coordinación' : 'Con recuperación registrada') + '. Si hay que cambiarla, pídalo a coordinación.';
+            else if (motivo) msg.textContent = '❌ No se guardó: ' + motivo;
+            else if (p.estado === 'invalida') msg.textContent = 'Nota entre 1,0 y 5,0 con máximo 2 decimales (ej.: 3,5 o 4,25).';
+            else if (val.borrador) msg.textContent = '● Sin enviar (guardada en el celular)';
+            else msg.textContent = '';
+        };
+        const leerObs = () => {
+            const lista = selects.map(s => s.value).filter(Boolean);
+            return lista.filter((x, i) => lista.indexOf(x) === i);
+        };
+        input.addEventListener('input', () => { registrarCambio(curso, est, { nota: input.value }); pintar(); actualizarBotonNotas(curso); });
+        input.addEventListener('change', () => {
+            const p = interpretarNota(input.value);
+            if (p.estado === 'sugerir') {
+                const sug = formatoNota(p.c);
+                if (confirm(`${est.nombre}: escribió "${input.value}".\n¿Quiso decir ${sug}?`)) input.value = sug;
+            } else if (p.estado === 'ok') {
+                input.value = formatoNota(p.c);
+            }
+            registrarCambio(curso, est, { nota: input.value });
+            pintar();
+            actualizarBotonNotas(curso);
+        });
+        selects.forEach(s => s.addEventListener('change', () => {
+            const lista = leerObs();
+            if (selects.filter(x => x.value).length !== lista.length) { alert('Esa frase ya está elegida para este estudiante.'); s.value = ''; }
+            registrarCambio(curso, est, { obs: leerObs() });
+            pintar();
+            actualizarBotonNotas(curso);
+        }));
+        area.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });     // una sola línea, como queda en el boletín
+        area.addEventListener('input', () => { registrarCambio(curso, est, { texto: area.value }); pintar(); actualizarBotonNotas(curso); });
+        pintar();
+        return card;
+    }
+
+    function actualizarBotonNotas(curso) {
+        const btn = document.getElementById('btnEnviarNotas');
+        const n = curso ? pendientesDe(curso).length : 0;
+        btn.textContent = notasEnviando ? 'Enviando...' : (n ? `📤 Enviar ${n} nota(s) de este curso` : '✔ Nada por enviar en este curso');
+        btn.disabled = notasEnviando || notasCargando || !n || !curso || !curso.editable;
+        actualizarTabNotas();
+        // El contador del selector se refresca sin redibujar la lista (no se pierde el foco)
+        const sel = document.getElementById('notasCursoSelector');
+        if (curso && sel.selectedOptions[0]) {
+            sel.selectedOptions[0].textContent = `${curso.grupo} · ${curso.asignatura}${n ? ` · ${n} sin enviar` : ''}`;
+        }
+    }
+
+    function alCambiarCursoNotas() {
+        notasCurso = document.getElementById('notasCursoSelector').value;
+        renderNotas();
+        document.getElementById('viewNotas').scrollTop = 0;
+    }
+
+    async function enviarNotas() {
+        const curso = cursoActualNotas();
+        if (!curso || !curso.idAsig || notasEnviando || notasCargando) return;
+        const pend = pendientesDe(curso);
+        if (pend.length === 0) return;
+        if (!curso.editable) return alert(textoVentana(notasDatos).txt);
+
+        // Revisión antes de enviar: nada ambiguo sale del celular
+        const problemas = [];
+        const items = [];
+        pend.forEach(est => {
+            const v = valoresEstudiante(curso, est);
+            const p = interpretarNota(v.nota);
+            if (p.estado === 'vacia') problemas.push(`${est.nombre}: falta la nota` + (centesimas(est.nota) !== null ? ' (una nota ya enviada no se puede dejar en blanco; pídalo a coordinación)' : ''));
+            else if (p.estado !== 'ok') problemas.push(`${est.nombre}: "${v.nota}" no es una nota válida`);
+            else items.push({ id: est.id, nota: (p.c / 100).toFixed(2), obs: v.obs, texto: limpiarTexto(v.texto) });
+        });
+        if (problemas.length) {
+            alert('Revise antes de enviar:\n\n' + problemas.slice(0, 12).join('\n') + (problemas.length > 12 ? `\n… y ${problemas.length - 12} más` : ''));
+            return;
+        }
+        notasEnviando = true;
+        actualizarBotonNotas(curso);
+        // Mientras viaja, no se puede escribir: lo que se ve es exactamente lo que se envió
+        document.querySelectorAll('#notasContainer input, #notasContainer select, #notasContainer textarea').forEach(x => { x.disabled = true; });
+        document.getElementById('notasCursoSelector').disabled = true;
+        document.getElementById('btnNotasBajar').disabled = true;
+        let guardadas = 0, sinCambio = 0, revocado = false;
+        const rechazos = {};
+        let error = null;
+        try {
+            for (let i = 0; i < items.length; i += NOTAS_POR_ENVIO) {
+                const lote = items.slice(i, i + NOTAS_POR_ENVIO);
+                const data = await llamarAPI({ accion: 'notas_guardar', codigo, version: 3, idAsig: curso.idAsig, items: lote });
+                if (data.codigo === 'NO_AUTORIZADO') { revocado = true; borrarDatosDeEstudiantes(); throw new Error('CODIGO_REVOCADO'); }
+                if (data.codigo === 'PAYLOAD_INVALIDO' && /desconocida/i.test(data.error || '')) throw new Error('SERVIDOR_VIEJO_NOTAS');
+                if (!data.ok) throw new Error(data.error || 'El servidor no guardó las notas.');
+                guardadas += data.guardadas || 0;
+                sinCambio += data.sin_cambio || 0;
+                (data.rechazadas || []).forEach(r => { rechazos[r.id] = r.motivo; });
+                // Lo aceptado (guardado o ya igual en el servidor) sale del borrador; lo rechazado se queda
+                // Sale del celular solo lo aceptado Y que sigue igual a lo enviado
+                const cursos = cursosBorrador(), b = cursos[curso.idAsig] || {};
+                lote.forEach(it => {
+                    const actual = b[it.id];
+                    const igual = actual && interpretarNota(actual.nota).c === Math.round(Number(it.nota) * 100) &&
+                        (actual.obs || []).join(',') === it.obs.join(',') && limpiarTexto(actual.texto) === it.texto;
+                    if (!rechazos[it.id] && igual) delete b[it.id];
+                });
+                if (Object.keys(b).length === 0) delete cursos[curso.idAsig];
+                guardarBorrador();
+            }
+        } catch (err) {
+            error = err;
+        } finally {
+            notasEnviando = false;
+            document.getElementById('notasCursoSelector').disabled = false;
+            document.getElementById('btnNotasBajar').disabled = false;
+        }
+        if (revocado) {
+            const m = explicarError(error);
+            alert(m);
+            return mostrarActivacion(m);
+        }
+        notasRechazos[curso.idAsig] = rechazos;
+        const nRech = Object.keys(rechazos).length;
+        let resumen = `${curso.grupo} · ${curso.asignatura}\n✅ Guardadas: ${guardadas}` + (sinCambio ? `\n= Ya estaban iguales: ${sinCambio}` : '');
+        if (nRech) resumen += `\n❌ No se guardaron: ${nRech} (quedan marcadas en rojo, con el motivo)`;
+        if (error) resumen += `\n\n⚠️ ${explicarError(error)}\nLo que no se envió sigue guardado en el celular.`;
+        alert(resumen);
+        await cargarNotas(false);      // trae lo que quedó en el servidor
+    }
+
     function explicarError(err) {
         switch (err.message) {
             case 'SIN_RED': return 'No hay conexión a internet. Los datos siguen guardados en el celular.';
@@ -1415,6 +1934,7 @@
             case 'SERVIDOR_VIEJO': return 'El servidor no está actualizado a la versión ' + CONFIG.VERSION_API_REQUERIDA + '. Avise a coordinación.';
             case 'SERVIDOR_SIN_ACCESO': return 'El servidor del colegio no está abierto a la app (la publicación quedó con un acceso equivocado).\n' +
                 'Su lista NO se perdió: sigue guardada en el celular. Avise a coordinación y sincronice cuando lo corrijan.';
+            case 'SERVIDOR_VIEJO_NOTAS': return 'Para las notas, el servidor debe estar en la versión ' + CONFIG.VERSION_API_NOTAS + ' o posterior. Avise a coordinación. (La asistencia funciona normal.)';
             case 'CODIGO_REVOCADO': return 'Su código fue revocado o cambiado. Las clases pendientes siguen guardadas: active el código nuevo para enviarlas.';
             default: return err.message;
         }
