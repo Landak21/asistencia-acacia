@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <!--
-  ╔══════════════════════════════════════════════════════════════════════╗
-  ║  ASISTENCIA ACACIA II · Frontend v3.6.0 (Identidad Media)            ║
-  ║  Autor: Eliot Manrique · Coordinación Educación Media                ║
-  ║  Código: MEDIA-ASISTENCIA-APP_V3.6_20261008                          ║
-  ║                                                                      ║
-  ║  ¿QUÉ SE EDITA? Solo el bloque "CONFIGURACIÓN" que está justo abajo, ║
-  ║  dentro de <head>. No es necesario tocar nada más del archivo.       ║
-  ╚══════════════════════════════════════════════════════════════════════╝
+  SIS-MEDIA-ASISTENCIA-APP · V3.7 · 8 de octubre de 2026
+  App de asistencia y notas de Educación Media · Colegio Acacia II IED (se publica como index.html)
+  Autor: Eliot Manrique · Coordinación de Educación Media
+  Habla con SIS-MEDIA-ASISTENCIA-API V3.15 (o cualquier 3.x desde la 3.10; las notas, desde la 3.14).
+  Sigue NOR-MEDIA-ESTANDAR-SCRIPTS: lo único que se edita es la sección 1 (AJUSTES), justo abajo.
+  Novedades V3.7: nombre y versión con la Nomenclatura V3.0; textos con los nombres nuevos de las
+  pestañas. Pantallas y contrato con el servidor, iguales a la V3.6.
 -->
 <html lang="es">
 <head>
-    <!-- ════════════════════════ CONFIGURACIÓN ════════════════════════ -->
+    <!-- ═══════════════ 1. AJUSTES (lo único que se edita a mano) ═══════════════ -->
     <script>
         const CONFIG = Object.freeze({
 
@@ -37,10 +36,10 @@
             //    La asistencia sigue funcionando con un servidor más viejo.
             VERSION_API_NOTAS: '3.14.0',
 
-            VERSION_APP: '3.6.0'
+            VERSION_APP: '3.7.0'
         });
     </script>
-    <!-- ═══════════════════════ FIN CONFIGURACIÓN ═══════════════════════ -->
+    <!-- ═══════════════════════ FIN DE LOS AJUSTES ═══════════════════════ -->
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1712,7 +1711,7 @@
             return;
         }
         if (!curso.idAsig) {
-            cont.appendChild(el('div', 'notas-aviso', 'Esta asignatura no está en el catálogo de notas del periodo (hoja ASIGNATURAS). Avise a coordinación: hasta entonces no se puede calificar.'));
+            cont.appendChild(el('div', 'notas-aviso', 'Esta asignatura no está en el catálogo de notas del periodo (pestaña ASIGNATURAS del libro de notas). Avise a coordinación: hasta entonces no se puede calificar.'));
             actualizarBotonNotas(null);
             return;
         }
