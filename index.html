@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <!--
-  SIS-MEDIA-ASISTENCIA-APP · V3.8 · 9 de octubre de 2026
+  SIS-MEDIA-ASISTENCIA-APP · V3.10 · 16 de octubre de 2026
   App de asistencia y notas de Educación Media · Colegio Acacia II IED (se publica como index.html)
   Autor: Eliot Manrique · Coordinación de Educación Media
-  Habla con SIS-MEDIA-ASISTENCIA-API V3.15 (o cualquier 3.x desde la 3.10; las notas, desde la 3.14).
+  Habla con SIS-MEDIA-ASISTENCIA-API V3.23 (o cualquier 3.x desde la 3.10; las notas, desde la 3.14).
   Sigue NOR-MEDIA-ESTANDAR-SCRIPTS: lo único que se edita es la sección 1 (AJUSTES), justo abajo.
-  Novedades V3.8: textos con la identidad de Media (NOR-MEDIA-IDENTIDAD-GUIA): trato de usted, fechas
-  en texto, coma decimal con espacio antes de %, sin mayúsculas para gritar, el conteo de la clase con
-  palabras (no solo color) y el grupo sin repetir su código. Pantallas y contrato con el servidor,
-  iguales a la V3.7. V3.7: nombre y versión con la Nomenclatura V3.0.
+  Novedades V3.10: «Por registrar» y el aviso de fecha tienen en cuenta los días sin clase de un docente y
+  las clases reprogramadas (lo manda el servidor desde la V3.23; con uno anterior todo sigue igual).
+  V3.9: en «Por registrar», coordinación ve el nombre del docente de cada curso.
+  V3.8: textos con la identidad de Media (usted, fechas en texto, coma decimal, estados escritos).
 -->
 <html lang="es">
 <head>
@@ -38,7 +38,7 @@
             //    La asistencia sigue funcionando con un servidor más viejo.
             VERSION_API_NOTAS: '3.14.0',
 
-            VERSION_APP: '3.8.0'
+            VERSION_APP: '3.10.0'
         });
     </script>
     <!-- ═══════════════════════ FIN DE LOS AJUSTES ═══════════════════════ -->
@@ -167,6 +167,7 @@
         .autor-creditos { text-align: center; font-size: 12px; color: #aaa; margin-top: 25px; padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
     </style>
     <style>.conteo-et { font-size: 11px; font-weight: 600; opacity: 0.85; margin-top: 2px; }</style>
+    <style>.docente-curso { font-size: 13px; color: #555B63; margin: -2px 0 6px; }</style>
 </head>
 <body>
 
@@ -880,6 +881,11 @@
         const p = programacion.find(x => aTexto(x.grupo) === grupo && aTexto(x.asignatura) === asignatura);
         return p && Array.isArray(p.dias) ? p.dias : [];
     }
+    /** V3.10: fechas propias del curso que manda el servidor (V3.23+): las que no cuentan y las que se suman. */
+    function ajustesDeCurso(grupo, asignatura) {
+        const p = programacion.find(x => !x.reemplazo && aTexto(x.grupo) === grupo && aTexto(x.asignatura) === asignatura) || {};
+        return { excluir: Array.isArray(p.excluir) ? p.excluir.map(aTexto) : [], agregar: Array.isArray(p.agregar) ? p.agregar.map(aTexto) : [] };
+    }
 
     /* ── Por registrar: las clases del periodo que aún no tienen lista ──────
      * Es la herramienta para subir el historial en papel. En vez de elegir la
@@ -903,12 +909,18 @@
             const nums = (p.dias || []).map(numeroDia).filter(n => n !== null);
             if (nums.length === 0) return;
             const faltan = [];
+            const excluir = new Set(Array.isArray(p.excluir) ? p.excluir.map(aTexto) : []);
             const d = aFecha(periodoRango.desde);
             for (let iso = fechaLocalISO(d); iso <= hasta; d.setDate(d.getDate() + 1), iso = fechaLocalISO(d)) {
-                if (nums.indexOf(d.getDay()) === -1 || sinClaseEn(iso, grupo)) continue;
+                if (nums.indexOf(d.getDay()) === -1 || sinClaseEn(iso, grupo) || excluir.has(iso)) continue;
                 if (!tienen.has(claveClase(iso, grupo, asignatura))) faltan.push(iso);
             }
-            cursos.push({ grupo, asignatura, faltan });
+            // Clases reprogramadas: la fecha a la que se trasladó la clase también se debe registrar.
+            (Array.isArray(p.agregar) ? p.agregar.map(aTexto) : []).forEach(iso => {
+                if (iso >= periodoRango.desde && iso <= hasta && !tienen.has(claveClase(iso, grupo, asignatura)) && faltan.indexOf(iso) === -1) faltan.push(iso);
+            });
+            faltan.sort();
+            cursos.push({ grupo, asignatura, faltan, docente: aTexto(p.docente) });
         });
         return cursos.sort((a, b) => b.faltan.length - a.faltan.length || a.grupo.localeCompare(b.grupo));
     }
@@ -936,6 +948,12 @@
             const h = document.createElement('h4');
             h.textContent = `${etiquetaGrupo(c.grupo)} · ${c.asignatura}`;
             caja.appendChild(h);
+            if (c.docente) {                              // solo llega para coordinación (servidor V3.22+)
+                const doc = document.createElement('div');
+                doc.className = 'docente-curso';
+                doc.textContent = `Docente: ${c.docente}`;
+                caja.appendChild(doc);
+            }
             const info = document.createElement('div');
             if (c.faltan.length === 0) {
                 info.className = 'al-dia';
@@ -1016,13 +1034,16 @@
         }
         const dias = diasDeCurso(grupo, asignaturaActual);
         const nums = dias.map(numeroDia).filter(n => n !== null);
-        if (nums.length) {
+        const ajuste = ajustesDeCurso(grupo, asignaturaActual);
+        if (nums.length && ajuste.agregar.indexOf(fecha) === -1) {   // la fecha de una clase reprogramada es legítima
             const noEsDia = nums.indexOf(diaSemana(fecha)) === -1;
             const marcado = sinClaseEn(fecha, grupo);
-            if (noEsDia || marcado) {
+            const propio = ajuste.excluir.indexOf(fecha) !== -1;
+            if (noEsDia || marcado || propio) {
                 if (!confirm(`⚠️ ¿Revisó la fecha?\n\nEl ${fechaLarga(fecha)} ` +
                              (noEsDia ? `no es día de clase de ${etiquetaGrupo(grupo)}: tiene clase ${dias.join(' y ').toLowerCase()}.`
-                                      : `está marcado sin clase para ${etiquetaGrupo(grupo)}.`) +
+                                      : marcado ? `está marcado sin clase para ${etiquetaGrupo(grupo)}.`
+                                      : `no cuenta como clase de ${asignaturaActual}: ese día está marcado sin clase para este curso o la clase se pasó a otra fecha.`) +
                              `\n\nPulse «Cancelar» para corregir la fecha, o «Aceptar» si de verdad hubo clase ese día.`)) return;
             }
         }
